@@ -6,8 +6,9 @@
 <meta name="theme-color" content="#EEF1EE">
 <title>Study</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3A31'/%3E%3Cpath d='M50 33c-7-5-20-6-30-2v42c10-4 23-3 30 2 7-5 20-6 30-2V31c-10-4-23-3-30 2z' fill='none' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M50 33v42' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3A31'/%3E%3Cpath d='M50 33c-7-5-20-6-30-2v42c10-4 23-3 30 2 7-5 20-6 30-2V31c-10-4-23-3-30 2z' fill='none' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M50 33v42' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
 <style>
 /* ============ TOKENS ============ */
@@ -101,6 +102,8 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
 .section-title::after{content:''; flex:1; height:1px; background:var(--line);}
 
 /* ============ TASK CARD ============ */
+.today-layout{display:block;}
+.today-side{margin-top:0;}
 .task{
   display:flex; align-items:center; gap:12px; padding:13px 14px; background:var(--paper-raised);
   border:1px solid var(--line); border-radius:var(--radius-sm); margin-bottom:8px; transition:all .2s ease;
@@ -251,6 +254,27 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
 .link-btn{background:none; border:none; color:var(--teal); font-size:13px; font-weight:600; padding:0;}
 .divider{height:1px; background:var(--line); margin:16px 0;}
 .hidden{display:none !important;}
+
+/* ============ WIDE / TABLET LANDSCAPE ============ */
+@media (min-width: 860px){
+  body{ padding-bottom:24px; padding-left:100px; }
+  nav.tabbar{
+    left:0; right:auto; top:0; bottom:0; max-width:100px; width:100px;
+    flex-direction:column; justify-content:flex-start; align-items:center;
+    padding:28px 10px; gap:10px; border-top:none; border-right:1px solid var(--line);
+  }
+  nav.tabbar .tab{ flex:none; width:100%; padding:12px 4px; border-radius:12px; }
+  nav.tabbar .tab.active{ background:var(--teal-soft); }
+  #app{ max-width:820px; margin:0 auto; padding:0 28px; }
+  .today-layout{ display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+  .today-side{ position:sticky; top:24px; }
+  .stat-grid{ grid-template-columns:repeat(4,1fr); }
+  .cal-grid{ max-width:640px; }
+}
+@media (min-width: 860px) and (orientation: landscape){
+  #app{ max-width:920px; }
+  .today-layout{ grid-template-columns:1fr 320px; }
+}
 
 ::-webkit-scrollbar{width:0; height:0;}
 </style>
@@ -584,26 +608,27 @@ function renderToday(){
   const tasks = day.taskIds.map(taskById).filter(Boolean);
   const logs = tasks.map(t => logFor(dateStr, t.id));
   const allDone = tasks.length>0 && logs.every(l => l && l.completed);
+  const doneCount = logs.filter(l => l && l.completed).length;
 
-  let html = '';
-  html += `<div class="section-title">Day ${dayIdx+1} of ${r.days.length} · ${day.name||''}</div>`;
+  let main = '';
+  main += `<div class="section-title">Day ${dayIdx+1} of ${r.days.length} · ${day.name||''}</div>`;
 
   if(allDone){
-    html += `<div class="banner">
+    main += `<div class="banner">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
       <div><h3>All tasks finished</h3><p>${tasks.length} task${tasks.length>1?'s':''} completed today. Nice work.</p></div>
     </div>`;
   }
 
   if(!tasks.length){
-    html += emptyState('calendar','No tasks for this day','Add tasks to this routine day from Manage.');
+    main += emptyState('calendar','No tasks for this day','Add tasks to this routine day from Manage.');
   } else {
     tasks.forEach(t=>{
       const log = logFor(dateStr, t.id);
       const done = !!(log && log.completed);
       const isTimed = t.type === 'timed';
       const isActiveTimer = timerState && timerState.taskId === t.id;
-      html += `<div class="task ${done?'done':''}" id="task-${t.id}">
+      main += `<div class="task ${done?'done':''}" id="task-${t.id}">
         <button class="check" onclick="toggleTask('${t.id}')">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
         </button>
@@ -620,13 +645,44 @@ function renderToday(){
     });
   }
 
-  if(timerState){
-    html += renderTimerPanel();
-  }
+  let side = timerState ? renderTimerPanel() : renderDaySummaryPanel(r, dayIdx, tasks, doneCount);
 
-  el.innerHTML = html;
+  el.innerHTML = `<div class="today-layout"><div class="today-main">${main}</div><div class="today-side">${side}</div></div>`;
   if(timerState) updateDialDisplay();
   refreshHeader();
+}
+
+function renderDaySummaryPanel(r, dayIdx, tasks, doneCount){
+  const s = computeStreaks();
+  const total = tasks.length;
+  const pct = total ? doneCount/total : 0;
+  const C = 2*Math.PI*40;
+  const nextTask = tasks.find(t => !(logFor(todayISO(), t.id)||{}).completed);
+  return `<div class="card">
+    <h3 style="margin-bottom:14px;">Day progress</h3>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div style="position:relative; width:96px; height:96px; flex:none;">
+        <svg width="96" height="96" viewBox="0 0 96 96" style="transform:rotate(-90deg);">
+          <circle cx="48" cy="48" r="40" stroke="var(--line)" stroke-width="8" fill="none"/>
+          <circle cx="48" cy="48" r="40" stroke="var(--teal)" stroke-width="8" fill="none" stroke-linecap="round"
+            stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}"/>
+        </svg>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:17px;">${doneCount}/${total}</div>
+      </div>
+      <div>
+        <div style="font-size:13px; color:var(--ink-soft);">tasks done today</div>
+        <div style="font-family:var(--mono); font-size:12px; color:var(--ink-faint); margin-top:4px;">week: ${s.curWeekCount}/${s.threshold} for streak</div>
+      </div>
+    </div>
+    ${nextTask ? `<div class="divider"></div>
+      <div style="font-size:12px; color:var(--ink-faint); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em; font-family:var(--mono);">Up next</div>
+      <div class="list-item" style="padding:0 0 4px;"><div class="info"><div class="t">${escapeHtml(nextTask.icon?nextTask.icon+' ':'')}${escapeHtml(nextTask.name)}</div>
+      <div class="s">${nextTask.type==='timed' ? (nextTask.plannedMinutes?nextTask.plannedMinutes+' min planned':'timed') : 'checklist'}</div></div></div>
+      ${nextTask.type==='timed'
+        ? `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="openTimer('${nextTask.id}')">Start timer</button>`
+        : `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="toggleTask('${nextTask.id}')">Mark done</button>`}
+    ` : `<div class="divider"></div><p class="sub" style="margin:0;">All caught up for today.</p>`}
+  </div>`;
 }
 
 function renderTimerPanel(){
@@ -771,21 +827,23 @@ function showDayDetail(dateStr){
    ========================================================================= */
 function renderTrends(){
   const el = document.getElementById('trendsContent');
-  const logs = Object.values(DB.logs).filter(l=>l.completed);
+  const completedLogs = Object.values(DB.logs).filter(l=>l.completed);
+  const activityLogs = Object.values(DB.logs).filter(hasActivity);
   const s = computeStreaks();
 
-  if(!logs.length){
+  if(!activityLogs.length){
     el.innerHTML = emptyState('bar','No data yet','Complete a few tasks and trends will show up here.');
     return;
   }
 
-  const totalSeconds = logs.reduce((a,l)=>a+(l.actualSeconds||0),0);
-  const totalDaysStudied = studiedDates().size;
-  const avgSessionMin = Math.round((totalSeconds/logs.length)/60) || 0;
+  const totalSeconds = activityLogs.reduce((a,l)=>a+(l.actualSeconds||0),0);
+  const studied = studiedDates();
+  const totalDaysStudied = studied.size;
+  const avgSessionMin = Math.round((totalSeconds/activityLogs.length)/60) || 0;
 
-  // per-task aggregation
+  // per-task aggregation (based on completions, for "how often did I do this")
   const perTask = {};
-  logs.forEach(l=>{
+  completedLogs.forEach(l=>{
     const t = taskById(l.taskId); if(!t) return;
     perTask[l.taskId] = perTask[l.taskId] || { name:t.name, count:0, totalSec:0, plannedSec:0 };
     perTask[l.taskId].count++;
@@ -796,21 +854,76 @@ function renderTrends(){
   const timedTaskRows = taskRows.filter(r=>r.plannedSec>0);
   const maxCount = Math.max(...taskRows.map(r=>r.count),1);
 
-  // weekday completion distribution
+  // weekday distribution (any activity)
   const wdCounts = [0,0,0,0,0,0,0]; // Mon..Sun
-  studiedDates().forEach(ds=>{
+  studied.forEach(ds=>{
     const day = (new Date(ds+'T00:00:00').getDay()+6)%7;
     wdCounts[day]++;
   });
   const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const maxWd = Math.max(...wdCounts,1);
+  const bestWdIdx = wdCounts.indexOf(Math.max(...wdCounts));
+  const bestWdFull = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][bestWdIdx];
+
+  // last 8 weeks trend
+  const weeks = [];
+  const cursor = new Date(weekStart(todayISO())+'T00:00:00');
+  for(let i=7;i>=0;i--){
+    const d = new Date(cursor); d.setDate(d.getDate() - i*7);
+    const wk = todayISO(d);
+    let count = 0;
+    studied.forEach(ds => { if(weekKey(ds)===wk) count++; });
+    weeks.push({ wk, count, label: (d.getMonth()+1)+'/'+d.getDate() });
+  }
+  const maxWeek = Math.max(...weeks.map(w=>w.count), DB.settings.streakThreshold, 1);
+
+  // consistency: studied days / calendar days since first activity
+  const allDates = Array.from(studied).sort();
+  const firstDate = allDates[0];
+  const daysSinceFirst = Math.max(1, Math.round((new Date(todayISO()+'T00:00:00') - new Date(firstDate+'T00:00:00'))/86400000) + 1);
+  const consistencyPct = Math.round((totalDaysStudied/daysSinceFirst)*100);
+
+  // longest single logged session
+  const longest = activityLogs.reduce((max,l)=> (l.actualSeconds||0) > max ? (l.actualSeconds||0) : max, 0);
+
+  // difficulty mix (completed tasks)
+  const diffCounts = { easy:0, medium:0, hard:0 };
+  completedLogs.forEach(l=>{ const t = taskById(l.taskId); if(t && t.difficulty && diffCounts[t.difficulty]!==undefined) diffCounts[t.difficulty]++; });
+  const diffTotal = diffCounts.easy+diffCounts.medium+diffCounts.hard;
 
   let html = '';
   html += `<div class="stat-grid">
     <div class="stat"><div class="v mono">${totalDaysStudied}</div><div class="l">days studied</div></div>
     <div class="stat"><div class="v mono">${s.current} / ${s.best}</div><div class="l">current / best streak</div></div>
     <div class="stat"><div class="v mono">${Math.round(totalSeconds/3600*10)/10}h</div><div class="l">total time logged</div></div>
-    <div class="stat"><div class="v mono">${avgSessionMin}m</div><div class="l">avg. task session</div></div>
+    <div class="stat"><div class="v mono">${consistencyPct}%</div><div class="l">consistency since ${firstDate}</div></div>
+  </div>`;
+
+  html += `<div class="card"><h3>Last 8 weeks</h3>`;
+  html += `<div style="display:flex; align-items:flex-end; gap:6px; height:80px; margin-top:6px;">`;
+  weeks.forEach(w=>{
+    const h = Math.max(4, (w.count/maxWeek)*100);
+    const met = w.count >= DB.settings.streakThreshold;
+    html += `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+      <div style="width:100%; height:70px; display:flex; align-items:flex-end;">
+        <div style="width:100%; height:${h}%; background:${met?'var(--teal)':'var(--line)'}; border-radius:4px 4px 2px 2px;"></div>
+      </div>
+      <div style="font-size:9px; color:var(--ink-faint); font-family:var(--mono);">${w.label}</div>
+    </div>`;
+  });
+  html += `</div><p class="sub" style="margin:10px 0 0;">Dark bars = weeks that met your ${DB.settings.streakThreshold}-day streak threshold.</p></div>`;
+
+  html += `<div class="card"><h3>Studied by weekday</h3>`;
+  wdLabels.forEach((l,i)=>{
+    const pct = (wdCounts[i]/maxWd)*100;
+    html += `<div class="bar-row"><div class="lbl">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:var(--ember);"></div></div><div class="bar-val">${wdCounts[i]}</div></div>`;
+  });
+  if(maxWd>0) html += `<p class="sub" style="margin:8px 0 0;">You study most on ${bestWdFull}s.</p>`;
+  html += `</div>`;
+
+  html += `<div class="stat-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="stat"><div class="v mono">${fmtMin(longest)}m</div><div class="l">longest single session</div></div>
+    <div class="stat"><div class="v mono">${activityLogs.length}</div><div class="l">total sessions logged</div></div>
   </div>`;
 
   html += `<div class="card"><h3>Time per task (top 8)</h3>`;
@@ -820,12 +933,15 @@ function renderTrends(){
   });
   html += `</div>`;
 
-  html += `<div class="card"><h3>Studied by weekday</h3>`;
-  wdLabels.forEach((l,i)=>{
-    const pct = (wdCounts[i]/maxWd)*100;
-    html += `<div class="bar-row"><div class="lbl">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:var(--ember);"></div></div><div class="bar-val">${wdCounts[i]}</div></div>`;
-  });
-  html += `</div>`;
+  if(diffTotal>0){
+    html += `<div class="card"><h3>Difficulty mix</h3>`;
+    [['easy','Easy'],['medium','Medium'],['hard','Hard']].forEach(([k,l])=>{
+      const pct = (diffCounts[k]/diffTotal)*100;
+      const color = k==='easy'?'var(--teal)':k==='medium'?'var(--ember)':'var(--brick)';
+      html += `<div class="bar-row"><div class="lbl">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div><div class="bar-val">${diffCounts[k]}</div></div>`;
+    });
+    html += `</div>`;
+  }
 
   if(timedTaskRows.length){
     html += `<div class="card"><h3>Estimate accuracy</h3><div>`;
@@ -849,7 +965,9 @@ function renderTrends(){
    ========================================================================= */
 function renderManage(){
   const el = document.getElementById('manageContent');
-  const routines = Object.values(DB.routines);
+  const allRoutines = Object.values(DB.routines);
+  const routines = allRoutines.filter(r=>!r.archived);
+  const archivedRoutines = allRoutines.filter(r=>r.archived);
   const tasks = Object.values(DB.tasks);
 
   let html = `<div class="section-title">Routines</div>`;
@@ -868,6 +986,25 @@ function renderManage(){
     });
   }
   html += `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="openRoutineEditor()">+ New routine</button>`;
+  if(routines.length){
+    html += `<button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="startNewRoutinePlan()">Start new plan (archive current)</button>
+      <p class="sub" style="margin-top:6px;">Your streak and history are based on days studied, not the routine — switching or starting a new plan never resets it.</p>`;
+  }
+
+  if(archivedRoutines.length){
+    html += `<button class="link-btn" style="margin:10px 0;" onclick="toggleArchivedRoutines()">
+      <span id="archivedToggleLabel">${archivedRoutinesOpen?'Hide':'Show'} past routines (${archivedRoutines.length})</span></button>`;
+    if(archivedRoutinesOpen){
+      html += `<div id="archivedRoutinesList">`;
+      archivedRoutines.forEach(r=>{
+        html += `<div class="list-item">
+          <div class="info"><div class="t">${escapeHtml(r.name)}</div>
+          <div class="s">${r.days.length}-day cycle · started ${r.startDate}</div></div>
+          <div class="ctrl"><button class="btn btn-sm btn-ghost" onclick="restoreRoutine('${r.id}')">Restore</button></div></div>`;
+      });
+      html += `</div>`;
+    }
+  }
 
   html += `<div class="section-title">Task library</div>`;
   if(!tasks.length){
@@ -912,6 +1049,8 @@ function renderManage(){
 }
 
 function updateThreshold(v){ DB.settings.streakThreshold = Math.max(1, Math.min(7, parseInt(v)||3)); saveData(); refreshHeader(); }
+let archivedRoutinesOpen = false;
+function toggleArchivedRoutines(){ archivedRoutinesOpen = !archivedRoutinesOpen; renderManage(); }
 function setTheme(t){ DB.settings.theme = t; saveData(); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); renderManage(); }
 function setActiveRoutine(id){ DB.settings.activeRoutineId = id; saveData(); renderManage(); refreshHeader(); toast('Active routine set'); }
 
@@ -991,66 +1130,113 @@ function deleteTask(id){
   saveData(); closeModal(); renderManage(); renderToday();
 }
 
-/* ---- Routine editor ---- */
+/* ---- Routine editor (LiftLog-style: build days as a list, edit each separately) ---- */
 let routineDraft = null;
-let routineDraftDayIdx = 0;
+let dayDraft = null;       // the day currently being edited in the nested modal
+let dayDraftIndex = null;  // index into routineDraft.days, or null if new
+let dayDraftIsNew = false;
 
-function openRoutineEditor(id){
+function openRoutineEditor(id, prefillStart){
   const src = id ? DB.routines[id] : null;
   routineDraft = src ? JSON.parse(JSON.stringify(src)) : {
-    id: uid(), name:'', startDate: todayISO(), archived:false, createdAt: Date.now(),
-    days: [{dayIndex:0, name:'Day 1', taskIds:[]}]
+    id: uid(), name:'', startDate: prefillStart || todayISO(), archived:false, createdAt: Date.now(),
+    days: []
   };
-  routineDraftDayIdx = 0;
   renderRoutineModal(!!src);
 }
 function editRoutine(id){ openRoutineEditor(id); }
 
 function renderRoutineModal(isEdit){
   const r = routineDraft;
-  const dayTabs = r.days.map((d,i)=>`<button class="day-tab ${i===routineDraftDayIdx?'sel':''}" onclick="switchDraftDay(${i})">${escapeHtml(d.name||('Day '+(i+1)))}</button>`).join('');
-  const day = r.days[routineDraftDayIdx];
-  const allTasks = Object.values(DB.tasks);
-
-  let taskChips = allTasks.length ? allTasks.map(t=>{
-    const sel = day.taskIds.includes(t.id);
-    return `<button class="chip ${sel?'sel':''}" onclick="toggleDraftTask('${t.id}')">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</button>`;
-  }).join('') : '<p class="sub">No tasks in your library yet — add one from Manage first.</p>';
+  const dayRows = r.days.length ? r.days.map((d,i)=>`
+    <div class="list-item">
+      <div class="info"><div class="t">${escapeHtml(d.name||('Day '+(i+1)))}</div>
+        <div class="s">${d.taskIds.length} task${d.taskIds.length===1?'':'s'}</div></div>
+      <div class="ctrl">
+        <button class="icon-btn" onclick="moveDraftDay(${i},-1)" ${i===0?'disabled':''} title="Move up">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+        <button class="icon-btn" onclick="moveDraftDay(${i},1)" ${i===r.days.length-1?'disabled':''} title="Move down">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openDayEditor(${i})" title="Edit day">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="deleteDraftDay(${i})" title="Delete day">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>`).join('') : '<p class="sub">No days yet. Add your first day below — this becomes day 1 of the cycle.</p>';
 
   openModal(`
     <div class="modal-head"><h3>${isEdit?'Edit routine':'New routine'}</h3><button class="xbtn" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Routine name</label><input type="text" id="r_name" value="${escapeAttr(r.name)}" placeholder="e.g. Exam prep cycle" oninput="routineDraft.name=this.value"></div>
-    <div class="row">
-      <div class="field"><label>Cycle length (days)</label><input type="number" id="r_length" min="1" max="30" value="${r.days.length}" onchange="resizeDraftDays(this.value)"></div>
-      <div class="field"><label>Start date</label><input type="text" id="r_start" value="${r.startDate}" oninput="routineDraft.startDate=this.value"></div>
-    </div>
+    <div class="field"><label>Start date</label><input type="text" id="r_start" value="${r.startDate}" oninput="routineDraft.startDate=this.value"></div>
     <div class="divider"></div>
-    <label style="font-size:12px;color:var(--ink-soft);font-weight:600;">Configure each day</label>
-    <div class="day-tabs" style="margin-top:8px;">${dayTabs}</div>
-    <div class="field"><label>Day name</label><input type="text" id="d_name" value="${escapeAttr(day.name)}" placeholder="e.g. Push day / Reading day" oninput="day.name=this.value"></div>
-    <div class="field"><label>Tasks for this day</label><div class="chiprow">${taskChips}</div></div>
-    <button class="btn btn-primary btn-block" style="margin-top:6px;" onclick="saveRoutine(${isEdit})">Save routine</button>
+    <label style="font-size:12px;color:var(--ink-soft);font-weight:600;">Days in cycle (${r.days.length})</label>
+    <div style="margin-top:8px;">${dayRows}</div>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="openDayEditor(null)">+ Add day</button>
+    <div class="divider"></div>
+    <button class="btn btn-primary btn-block" onclick="saveRoutine(${isEdit})">Save routine</button>
     ${isEdit?`<button class="btn btn-brick btn-block" style="margin-top:8px;" onclick="deleteRoutine('${r.id}')">Delete routine</button>`:''}
   `);
 }
-function switchDraftDay(i){ routineDraftDayIdx = i; renderRoutineModal(!!DB.routines[routineDraft.id]); }
-function resizeDraftDays(n){
-  n = Math.max(1, Math.min(30, parseInt(n)||1));
+
+function moveDraftDay(i, dir){
   const days = routineDraft.days;
-  while(days.length < n) days.push({dayIndex:days.length, name:'Day '+(days.length+1), taskIds:[]});
-  while(days.length > n) days.pop();
-  if(routineDraftDayIdx >= n) routineDraftDayIdx = n-1;
+  const j = i + dir;
+  if(j<0 || j>=days.length) return;
+  [days[i], days[j]] = [days[j], days[i]];
   renderRoutineModal(!!DB.routines[routineDraft.id]);
 }
-function toggleDraftTask(taskId){
-  const day = routineDraft.days[routineDraftDayIdx];
-  const idx = day.taskIds.indexOf(taskId);
-  if(idx>-1) day.taskIds.splice(idx,1); else day.taskIds.push(taskId);
+function deleteDraftDay(i){
+  if(!confirm('Remove this day from the cycle?')) return;
+  routineDraft.days.splice(i,1);
   renderRoutineModal(!!DB.routines[routineDraft.id]);
 }
+
+/* Nested "day editor" modal — add or edit a single day's name + tasks, like adding a workout day in LiftLog. */
+function openDayEditor(index){
+  dayDraftIndex = index;
+  dayDraftIsNew = index === null;
+  dayDraft = dayDraftIsNew
+    ? { name: 'Day '+(routineDraft.days.length+1), taskIds: [] }
+    : JSON.parse(JSON.stringify(routineDraft.days[index]));
+  renderDayEditorModal();
+}
+function renderDayEditorModal(){
+  const allTasks = Object.values(DB.tasks);
+  const taskChips = allTasks.length ? allTasks.map(t=>{
+    const sel = dayDraft.taskIds.includes(t.id);
+    return `<button class="chip ${sel?'sel':''}" onclick="toggleDayDraftTask('${t.id}')">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</button>`;
+  }).join('') : '<p class="sub">No tasks in your library yet — add one from Manage first.</p>';
+
+  openModal(`
+    <div class="modal-head"><h3>${dayDraftIsNew?'Add day':'Edit day'}</h3><button class="xbtn" onclick="cancelDayEditor()">✕</button></div>
+    <div class="field"><label>Day name</label><input type="text" id="d_name" value="${escapeAttr(dayDraft.name)}" placeholder="e.g. Push day / Reading day" oninput="dayDraft.name=this.value"></div>
+    <div class="field"><label>Tasks for this day</label><div class="chiprow">${taskChips}</div></div>
+    <button class="btn btn-primary btn-block" style="margin-top:6px;" onclick="saveDayEditor()">Save day</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="cancelDayEditor()">Cancel</button>
+  `);
+}
+function toggleDayDraftTask(taskId){
+  const idx = dayDraft.taskIds.indexOf(taskId);
+  if(idx>-1) dayDraft.taskIds.splice(idx,1); else dayDraft.taskIds.push(taskId);
+  renderDayEditorModal();
+}
+function saveDayEditor(){
+  const name = document.getElementById('d_name').value.trim() || ('Day '+(routineDraft.days.length+1));
+  dayDraft.name = name;
+  if(dayDraftIsNew) routineDraft.days.push(dayDraft);
+  else routineDraft.days[dayDraftIndex] = dayDraft;
+  renderRoutineModal(!!DB.routines[routineDraft.id]);
+}
+function cancelDayEditor(){ renderRoutineModal(!!DB.routines[routineDraft.id]); }
+
 function saveRoutine(isEdit){
   const name = document.getElementById('r_name').value.trim();
   if(!name){ toast('Name required'); return; }
+  if(!routineDraft.days.length){ toast('Add at least one day'); return; }
   routineDraft.name = name;
   routineDraft.startDate = document.getElementById('r_start').value.trim() || todayISO();
   DB.routines[routineDraft.id] = routineDraft;
@@ -1062,8 +1248,29 @@ function saveRoutine(isEdit){
 function deleteRoutine(id){
   if(!confirm('Delete this routine? Historical logs are kept, but the schedule is removed.')) return;
   delete DB.routines[id];
-  if(DB.settings.activeRoutineId === id) DB.settings.activeRoutineId = Object.keys(DB.routines)[0]||null;
+  if(DB.settings.activeRoutineId === id) DB.settings.activeRoutineId = Object.keys(DB.routines).find(k=>!DB.routines[k].archived) || null;
   saveData(); closeModal(); renderManage(); renderToday();
+}
+
+/* ---- Starting a new plan while preserving streak history ----
+   Streak/history are computed from logged activity dates, independent of which
+   routine is active, so switching or archiving routines never resets a streak.
+   This just archives the current plan (keeping its history intact) and opens
+   the editor for a fresh one. */
+function startNewRoutinePlan(){
+  const cur = activeRoutine();
+  if(cur){
+    cur.archived = true;
+    DB.settings.activeRoutineId = Object.keys(DB.routines).find(k => k!==cur.id && !DB.routines[k].archived) || null;
+    saveData();
+  }
+  openRoutineEditor(null, todayISO());
+  toast('Streak & history carry over — build your new plan');
+}
+function restoreRoutine(id){
+  DB.routines[id].archived = false;
+  saveData(); renderManage();
+  toast('Routine restored');
 }
 
 /* =========================================================================
