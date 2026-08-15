@@ -1,6 +1,6 @@
 {
-  "name": "Study",
-  "short_name": "Study",
+  "name": "Routine",
+  "short_name": "Routine",
   "description": "Cyclic study routine tracker with timers, streaks, and trends.",
   "start_url": "./index.html",
   "scope": "./",

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#EEF1EE">
-<title>Study</title>
+<title>Routine</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -243,6 +243,72 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
 .day-tab{flex:none; padding:9px 15px; border-radius:99px; border:1px solid var(--line); background:var(--paper-raised); font-size:13px; color:var(--ink-soft); white-space:nowrap;}
 .day-tab.sel{background:var(--teal); border-color:var(--teal); color:#fff; font-weight:600;}
 
+/* ============ DATE STRIP (swipe/tap day navigation) ============ */
+.date-strip{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 10px; margin-bottom:4px;}
+.date-strip::-webkit-scrollbar{display:none;}
+.date-pill{
+  flex:none; width:58px; padding:9px 0 8px; border-radius:14px; border:1px solid var(--line);
+  background:var(--paper-raised); display:flex; flex-direction:column; align-items:center; gap:4px;
+  color:var(--ink-soft); position:relative;
+}
+.date-pill .dow{font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint);}
+.date-pill .dnum{font-size:16px; font-weight:700; font-family:var(--display);}
+.date-pill.sel{background:var(--teal); border-color:var(--teal); color:#fff;}
+.date-pill.sel .dow{color:rgba(255,255,255,.75);}
+.date-pill.istoday:not(.sel){border-color:var(--ember); color:var(--ember);}
+.date-pill .ring{width:16px; height:16px; border-radius:50%; flex:none;}
+.date-pill .ring-inner{width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; color:inherit;}
+.date-nav-btn{
+  flex:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--paper-raised);
+  display:flex; align-items:center; justify-content:center; color:var(--ink-soft);
+}
+.date-nav-row{display:flex; align-items:center; gap:8px;}
+.date-nav-row .date-strip{flex:1;}
+.viewing-note{
+  display:flex; align-items:center; gap:8px; background:var(--ember-soft); color:var(--ember);
+  padding:9px 13px; border-radius:var(--radius-sm); font-size:12.5px; margin-bottom:12px;
+}
+
+/* Applied to #todayContent right after a swipe-triggered day change. */
+@keyframes swipeEnterFromRight{ from{opacity:0; transform:translateX(18px);} to{opacity:1; transform:translateX(0);} }
+@keyframes swipeEnterFromLeft{ from{opacity:0; transform:translateX(-18px);} to{opacity:1; transform:translateX(0);} }
+#todayContent.swipe-enter-from-right{ animation:swipeEnterFromRight .22s cubic-bezier(.22,.61,.36,1); }
+#todayContent.swipe-enter-from-left{ animation:swipeEnterFromLeft .22s cubic-bezier(.22,.61,.36,1); }
+@media (prefers-reduced-motion: reduce){
+  #todayContent.swipe-enter-from-right, #todayContent.swipe-enter-from-left{ animation:none; }
+}
+
+/* ============ FOCUS MODE ============ */
+.focus-toggle{
+  display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:99px;
+  border:1px solid var(--line); background:var(--paper-raised); font-size:12.5px; font-weight:600;
+  color:var(--ink-soft); margin-bottom:12px;
+}
+.upnext-row{
+  display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:var(--radius-sm);
+  border:1px dashed var(--line); color:var(--ink-soft); font-size:13.5px; margin-top:4px;
+}
+.upnext-row .lbl{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint);}
+.upnext-row .nm{font-weight:600; flex:1;}
+.completed-collapse{ margin-top:14px; }
+.completed-collapse summary{
+  font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; padding:4px 0;
+  font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em;
+}
+.completed-row{
+  display:flex; align-items:center; justify-content:space-between; padding:8px 0;
+  border-bottom:1px solid var(--line); font-size:13.5px; color:var(--ink-soft);
+}
+.completed-row:last-child{border-bottom:none;}
+
+/* Brief success pulse on a checkbox right after marking a task done. */
+@keyframes checkPulse{
+  0%{ box-shadow:0 0 0 0 rgba(37,89,75,.45); }
+  100%{ box-shadow:0 0 0 10px rgba(37,89,75,0); }
+}
+.check.pulse{ animation:checkPulse .5s ease-out; }
+@media (prefers-reduced-motion: reduce){ .check.pulse{ animation:none; } }
+
 .toast{
   position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(10px); opacity:0;
   background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:99px; font-size:13px;
@@ -284,7 +350,7 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
 <div id="app">
   <div class="topbar">
     <div class="brand">
-      <h1>Study</h1>
+      <h1>Routine</h1>
       <span class="tag" id="activeRoutineLabel">no routine</span>
     </div>
     <div class="streakpill" id="streakPill">
@@ -313,8 +379,10 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
         <span class="sw" style="background:var(--teal)"></span> full
         <span style="margin-left:auto">weekly threshold: <b id="threshLabel">3</b> days</span>
       </div>
+      <button class="link-btn hidden" id="jumpTodayBtn" style="margin-top:12px;" onclick="calJumpToday()">← Jump to today</button>
     </div>
     <div class="card" id="dayDetailCard" style="display:none;"></div>
+    <div id="monthSummaryCard"></div>
   </div>
 
   <!-- TRENDS VIEW -->
@@ -522,6 +590,20 @@ function refreshHeader(){
   document.getElementById('streakCount').textContent = s.current;
 }
 
+/* ---- Device-local preferences (mirrors LiftLog's focus-mode/theme pattern:
+   these describe how the app behaves on this device, not study data, so
+   they live in localStorage rather than the exportable DB). ---- */
+function getFocusMode(){ return localStorage.getItem('study_focus_mode') === '1'; }
+function setFocusMode(on){ localStorage.setItem('study_focus_mode', on?'1':'0'); renderToday(); }
+function getAutoBackupOnComplete(){ return localStorage.getItem('study_auto_backup') === '1'; }
+function setAutoBackupOnComplete(on){ localStorage.setItem('study_auto_backup', on?'1':'0'); renderManage(); }
+function markBackupDone(){ localStorage.setItem('study_last_backup_at', Date.now().toString()); }
+function daysSinceLastBackup(){
+  const raw = localStorage.getItem('study_last_backup_at');
+  if(!raw) return null;
+  return Math.floor((Date.now()-parseInt(raw))/86400000);
+}
+
 /* =========================================================================
    TIMER ENGINE
    ========================================================================= */
@@ -580,86 +662,229 @@ function finishTimer(mark){
     actualSeconds: (logFor(dateStr,taskId)?.actualSeconds||0) + el,
     plannedSeconds: timerState.plannedSeconds, completed: mark });
   timerState = null;
-  if(mark) toast('Task completed');
+  if(mark){ toast('Task completed'); pulseCheckSoon(taskId); }
   renderToday();
-  maybeShowDayBanner();
+  maybeAutoBackup(dateStr);
 }
 
 /* =========================================================================
-   RENDER: TODAY
+   RENDER: TODAY (date-browsable — swipe or tap the date strip to move
+   between days; only "today" allows the timer and future days are read-only)
    ========================================================================= */
-function renderToday(){
+let viewDate = todayISO();
+function isViewingToday(){ return viewDate === todayISO(); }
+function goToDate(ds){
+  const direction = ds > viewDate ? 1 : (ds < viewDate ? -1 : 0);
+  viewDate = ds;
+  renderToday(direction);
+}
+function shiftViewDate(delta){
+  const d = new Date(viewDate+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  viewDate = todayISO(d);
+  renderToday(delta);
+}
+function applySwipeAnim(el, direction){
+  if(!direction) return;
+  const cls = direction>0 ? 'swipe-enter-from-right' : 'swipe-enter-from-left';
+  el.classList.remove('swipe-enter-from-right','swipe-enter-from-left');
+  void el.offsetWidth; // force reflow so back-to-back swipes always restart the animation
+  el.classList.add(cls);
+}
+
+function completionLevelForDate(r, ds){
+  const day = routineDayFor(r, ds);
+  if(!day || !day.taskIds.length) return 'none';
+  const doneCount = day.taskIds.filter(id => (logFor(ds,id)||{}).completed).length;
+  if(doneCount===0) return 'none';
+  if(doneCount>=day.taskIds.length) return 'full';
+  return 'partial';
+}
+
+function renderDateStrip(){
+  const today = todayISO();
+  const r = activeRoutine();
+  const center = new Date(viewDate+'T00:00:00');
+  let pills = '';
+  for(let i=-3;i<=3;i++){
+    const d = new Date(center); d.setDate(d.getDate()+i);
+    const ds = todayISO(d);
+    const sel = ds === viewDate;
+    const isToday = ds === today;
+    const dow = d.toLocaleDateString(undefined,{weekday:'short'}).slice(0,2).toUpperCase();
+    const level = r ? completionLevelForDate(r, ds) : 'none';
+    let ringHtml;
+    if(level==='full') ringHtml = `<div class="ring" style="background:${sel?'#fff':'var(--teal)'};"></div>`;
+    else if(level==='partial') ringHtml = `<div class="ring" style="background:conic-gradient(${sel?'#fff':'var(--teal)'} 180deg, ${sel?'rgba(255,255,255,.3)':'var(--line)'} 0deg);"></div>`;
+    else ringHtml = `<div class="ring" style="background:${sel?'rgba(255,255,255,.3)':'var(--line)'};"></div>`;
+    pills += `<button class="date-pill ${sel?'sel':''} ${isToday?'istoday':''}" onclick="goToDate('${ds}')">
+      <span class="dow">${dow}</span><span class="dnum">${d.getDate()}</span>${ringHtml}
+    </button>`;
+  }
+  return `<div class="date-nav-row">
+    <button class="date-nav-btn" onclick="shiftViewDate(-1)" title="Previous day">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="date-strip">${pills}</div>
+    <button class="date-nav-btn" onclick="shiftViewDate(1)" title="Next day">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6 6-6"/></svg>
+    </button>
+  </div>`;
+}
+
+function renderToday(swipeDirection){
   const el = document.getElementById('todayContent');
   const r = activeRoutine();
+  const today = todayISO();
+  const viewingToday = viewDate === today;
+  const isFuture = viewDate > today;
+  const strip = renderDateStrip();
+
   if(!r){
-    el.innerHTML = emptyState('calendar', 'No active routine', 'Create a routine in Manage to start tracking today&#39;s tasks.',
+    el.innerHTML = strip + emptyState('calendar', 'No active routine', 'Create a routine in Manage to start tracking tasks.',
       '<button class="btn btn-primary btn-block" onclick="switchView(\'manage\')">Go to Manage</button>');
-    refreshHeader();
+    refreshHeader(); applySwipeAnim(el, swipeDirection);
     return;
   }
-  const dateStr = todayISO();
-  const day = routineDayFor(r, dateStr);
-  const dayIdx = dayIndexForDate(r, dateStr);
+  const day = routineDayFor(r, viewDate);
+  const dayIdx = dayIndexForDate(r, viewDate);
   if(!day){
-    el.innerHTML = emptyState('calendar','Routine hasn&#39;t started yet', 'Its start date is in the future.');
-    refreshHeader();
+    el.innerHTML = strip + emptyState('calendar','Routine hasn&#39;t started yet', 'This day is before the routine\'s start date.');
+    refreshHeader(); applySwipeAnim(el, swipeDirection);
     return;
   }
   const tasks = day.taskIds.map(taskById).filter(Boolean);
-  const logs = tasks.map(t => logFor(dateStr, t.id));
+  const logs = tasks.map(t => logFor(viewDate, t.id));
   const allDone = tasks.length>0 && logs.every(l => l && l.completed);
   const doneCount = logs.filter(l => l && l.completed).length;
 
-  let main = '';
+  let main = strip;
+
+  if(!viewingToday){
+    main += `<div class="viewing-note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+      ${isFuture ? 'Previewing an upcoming day — tasks can be logged once it arrives.' : 'Viewing a past day — you can still check things off retroactively.'}
+    </div>`;
+  }
+
   main += `<div class="section-title">Day ${dayIdx+1} of ${r.days.length} · ${day.name||''}</div>`;
 
   if(allDone){
     main += `<div class="banner">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
-      <div><h3>All tasks finished</h3><p>${tasks.length} task${tasks.length>1?'s':''} completed today. Nice work.</p></div>
+      <div><h3>All tasks finished</h3><p>${tasks.length} task${tasks.length>1?'s':''} completed. Nice work.</p></div>
     </div>`;
   }
 
   if(!tasks.length){
     main += emptyState('calendar','No tasks for this day','Add tasks to this routine day from Manage.');
   } else {
-    tasks.forEach(t=>{
-      const log = logFor(dateStr, t.id);
-      const done = !!(log && log.completed);
-      const isTimed = t.type === 'timed';
-      const isActiveTimer = timerState && timerState.taskId === t.id;
-      main += `<div class="task ${done?'done':''}" id="task-${t.id}">
-        <button class="check" onclick="toggleTask('${t.id}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-        </button>
-        <div class="body">
-          <div class="name">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
-          <div class="meta">${t.difficulty?`<span class="diff-tag diff-${t.difficulty}">${t.difficulty}</span> · `:''}${isTimed ? (t.plannedMinutes?t.plannedMinutes+' min planned':'timed') : 'checklist'}${log && log.actualSeconds ? ' · logged '+fmtMin(log.actualSeconds)+'m' : ''}</div>
-        </div>
-        <div class="actions">
-          ${isTimed ? `<button class="icon-btn ${isActiveTimer?'on':''}" onclick="openTimer('${t.id}')" title="Timer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          </button>` : ''}
-        </div>
-      </div>`;
-    });
+    const focusEligible = viewingToday && !isFuture;
+    if(focusEligible && tasks.length>0){
+      main += `<button class="focus-toggle" onclick="setFocusMode(${!getFocusMode()})" title="${getFocusMode() ? 'Switch to full list' : 'Switch to guided focus mode'}">
+        ${getFocusMode() ? '🎯 Focus' : '☰ List'}
+      </button>`;
+    }
+    if(focusEligible && getFocusMode() && !allDone){
+      main += renderFocusBody(tasks, viewDate);
+    } else {
+      main += tasks.map(t => renderTaskRow(t, viewDate, isFuture)).join('');
+    }
   }
 
-  let side = timerState ? renderTimerPanel() : renderDaySummaryPanel(r, dayIdx, tasks, doneCount);
+  let side;
+  if(timerState && viewingToday) side = renderTimerPanel();
+  else side = renderDaySummaryPanel(r, dayIdx, tasks, doneCount, viewingToday, isFuture);
 
   el.innerHTML = `<div class="today-layout"><div class="today-main">${main}</div><div class="today-side">${side}</div></div>`;
-  if(timerState) updateDialDisplay();
+  if(timerState && viewingToday) updateDialDisplay();
   refreshHeader();
+  applySwipeAnim(el, swipeDirection);
 }
 
-function renderDaySummaryPanel(r, dayIdx, tasks, doneCount){
+function renderTaskRow(t, dateStr, disabled, highlighted){
+  const log = logFor(dateStr, t.id);
+  const done = !!(log && log.completed);
+  const isTimed = t.type === 'timed';
+  const isActiveTimer = timerState && timerState.taskId === t.id && dateStr===todayISO();
+  const canTimer = isTimed && !disabled && dateStr===todayISO();
+  return `<div class="task ${done?'done':''}" id="task-${t.id}" style="${highlighted?'border-color:var(--teal); border-width:2px;':''}">
+    <button class="check" ${disabled?'disabled style="opacity:.35; pointer-events:none;"':''} onclick="toggleTask('${t.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+    </button>
+    <div class="body">
+      <div class="name">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
+      <div class="meta">${t.difficulty?`<span class="diff-tag diff-${t.difficulty}">${t.difficulty}</span> · `:''}${isTimed ? (t.plannedMinutes?t.plannedMinutes+' min planned':'timed') : 'checklist'}${log && log.actualSeconds ? ' · logged '+fmtMin(log.actualSeconds)+'m' : ''}</div>
+    </div>
+    <div class="actions">
+      ${canTimer ? `<button class="icon-btn ${isActiveTimer?'on':''}" onclick="openTimer('${t.id}')" title="Timer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </button>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderFocusBody(tasks, dateStr){
+  const incomplete = tasks.filter(t => !(logFor(dateStr,t.id)||{}).completed);
+  const doneCount = tasks.length - incomplete.length;
+  if(!incomplete.length) return '';
+  const activeT = incomplete[0];
+  const upNext = incomplete[1];
+  let html = renderTaskRow(activeT, dateStr, false, true);
+  if(upNext){
+    html += `<div class="upnext-row" onclick="toggleTask('${activeT.id}')">
+      <span class="lbl">Up next</span><span class="nm">${escapeHtml(upNext.icon?upNext.icon+' ':'')}${escapeHtml(upNext.name)}</span>
+      <span>→</span>
+    </div>`;
+  }
+  if(doneCount>0){
+    html += `<details class="completed-collapse"><summary>✅ Completed (${doneCount}/${tasks.length})</summary>`;
+    tasks.filter(t=>(logFor(dateStr,t.id)||{}).completed).forEach(t=>{
+      html += `<div class="completed-row">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)} <span class="diff-tag diff-easy">done</span></div>`;
+    });
+    html += `</details>`;
+  }
+  return html;
+}
+
+function renderWeekGlance(r){
+  const wkStart = weekStart(todayISO());
+  const today = todayISO();
+  const labels = ['M','T','W','T','F','S','S'];
+  let html = '<div style="display:flex; gap:6px;">';
+  for(let i=0;i<7;i++){
+    const d = new Date(wkStart+'T00:00:00'); d.setDate(d.getDate()+i);
+    const ds = todayISO(d);
+    const isFutureDay = ds > today;
+    const isToday = ds === today;
+    const level = r ? completionLevelForDate(r, ds) : 'none';
+    let bg = 'var(--line)';
+    if(!isFutureDay){
+      if(level==='full') bg = 'var(--teal)';
+      else if(level==='partial') bg = 'var(--teal-soft)';
+    } else {
+      bg = 'var(--paper)';
+    }
+    html += `<button onclick="goToDate('${ds}')" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; border:none; background:none; padding:0;">
+      <div style="width:100%; height:24px; border-radius:6px; background:${bg}; border:${isToday?'2px solid var(--ember)':'1px solid var(--line)'};"></div>
+      <span style="font-size:9px; color:var(--ink-faint); font-family:var(--mono);">${labels[i]}</span>
+    </button>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderDaySummaryPanel(r, dayIdx, tasks, doneCount, viewingToday, isFuture){
   const s = computeStreaks();
   const total = tasks.length;
   const pct = total ? doneCount/total : 0;
   const C = 2*Math.PI*40;
-  const nextTask = tasks.find(t => !(logFor(todayISO(), t.id)||{}).completed);
+  const nextTask = tasks.find(t => !(logFor(viewDate, t.id)||{}).completed);
+  const weekLine = s.current>0
+    ? `🔥 ${s.current} week streak · ${s.curWeekCount}/${s.threshold} days this week`
+    : `${s.curWeekCount}/${s.threshold} days this week for a streak`;
   return `<div class="card">
-    <h3 style="margin-bottom:14px;">Day progress</h3>
+    <h3 style="margin-bottom:14px;">${viewingToday?'Day progress':(isFuture?'Upcoming day':'Past day')}</h3>
     <div style="display:flex; align-items:center; gap:16px;">
       <div style="position:relative; width:96px; height:96px; flex:none;">
         <svg width="96" height="96" viewBox="0 0 96 96" style="transform:rotate(-90deg);">
@@ -670,18 +895,24 @@ function renderDaySummaryPanel(r, dayIdx, tasks, doneCount){
         <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:17px;">${doneCount}/${total}</div>
       </div>
       <div>
-        <div style="font-size:13px; color:var(--ink-soft);">tasks done today</div>
-        <div style="font-family:var(--mono); font-size:12px; color:var(--ink-faint); margin-top:4px;">week: ${s.curWeekCount}/${s.threshold} for streak</div>
+        <div style="font-size:13px; color:var(--ink-soft);">tasks done ${viewingToday?'today':'this day'}</div>
+        <div style="font-family:var(--mono); font-size:11px; color:var(--ink-faint); margin-top:4px; line-height:1.5;">${weekLine}</div>
       </div>
     </div>
+    <div class="divider"></div>
+    <div style="font-size:12px; color:var(--ink-faint); margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em; font-family:var(--mono);">This week</div>
+    ${renderWeekGlance(r)}
     ${nextTask ? `<div class="divider"></div>
       <div style="font-size:12px; color:var(--ink-faint); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em; font-family:var(--mono);">Up next</div>
       <div class="list-item" style="padding:0 0 4px;"><div class="info"><div class="t">${escapeHtml(nextTask.icon?nextTask.icon+' ':'')}${escapeHtml(nextTask.name)}</div>
       <div class="s">${nextTask.type==='timed' ? (nextTask.plannedMinutes?nextTask.plannedMinutes+' min planned':'timed') : 'checklist'}</div></div></div>
-      ${nextTask.type==='timed'
-        ? `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="openTimer('${nextTask.id}')">Start timer</button>`
-        : `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="toggleTask('${nextTask.id}')">Mark done</button>`}
-    ` : `<div class="divider"></div><p class="sub" style="margin:0;">All caught up for today.</p>`}
+      ${viewingToday
+        ? (nextTask.type==='timed'
+            ? `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="openTimer('${nextTask.id}')">Start timer</button>`
+            : `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="toggleTask('${nextTask.id}')">Mark done</button>`)
+        : (isFuture ? `<p class="sub" style="margin-top:8px;">Not available until this day arrives.</p>`
+            : `<button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="toggleTask('${nextTask.id}')">Mark done retroactively</button>`)}
+    ` : `<div class="divider"></div><p class="sub" style="margin:0;">All caught up${viewingToday?' for today':''}.</p>`}
   </div>`;
 }
 
@@ -713,6 +944,7 @@ function renderTimerPanel(){
 function stopTimerNoComplete(){ finishTimer(false); }
 
 function openTimer(taskId){
+  if(!isViewingToday()){ toast('Timers are only available for today'); return; }
   const t = taskById(taskId);
   if(timerState && timerState.taskId !== taskId){
     if(!confirm('Switch task? Current timer progress on "'+ (taskById(timerState.taskId)||{}).name +'" will be lost unless you finish it first.')) return;
@@ -722,8 +954,9 @@ function openTimer(taskId){
 }
 
 function toggleTask(taskId){
+  if(viewDate > todayISO()){ toast('Can\'t log a day that hasn\'t happened yet'); return; }
   const r = activeRoutine();
-  const dateStr = todayISO();
+  const dateStr = viewDate;
   const dayIdx = dayIndexForDate(r, dateStr);
   const t = taskById(taskId);
   const existing = logFor(dateStr, taskId);
@@ -734,20 +967,38 @@ function toggleTask(taskId){
     renderToday();
     return;
   }
-  // marking done
-  const day = routineDayFor(r, dateStr);
-  const doneCountBefore = day.taskIds.filter(id => logFor(dateStr,id)?.completed).length;
-  if(doneCountBefore === 0){
-    // first task of the day — no special confirm needed
-  }
   const plannedSec = (TASK_TYPES[t.type] && TASK_TYPES[t.type].hasTimer) ? (t.plannedMinutes||0)*60 : 0;
   upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId, completed:true, plannedSeconds:plannedSec });
   renderToday();
-  maybeShowDayBanner();
+  pulseCheckSoon(taskId);
+  maybeAutoBackup(dateStr);
 }
 
-function maybeShowDayBanner(){
-  // banner is rendered as part of renderToday() when all tasks are done; nothing extra needed here.
+/* Brief success pulse on the checkbox right after it's marked done — added
+   post-render since renderToday() just rebuilt the DOM from scratch. */
+function pulseCheckSoon(taskId){
+  requestAnimationFrame(()=>{
+    const row = document.getElementById('task-'+taskId);
+    const chk = row && row.querySelector('.check');
+    if(!chk) return;
+    chk.classList.add('pulse');
+    setTimeout(()=>chk.classList.remove('pulse'), 550);
+  });
+}
+
+/* Auto-backup: when a day's full task list is completed (today only — this
+   never fires for retroactive past-day edits), optionally trigger the same
+   JSON export the manual "Export JSON" button uses. Opt-in, device-local,
+   same shape as LiftLog's auto-backup-on-workout-complete. */
+function maybeAutoBackup(dateStr){
+  if(dateStr !== todayISO()) return;
+  if(!getAutoBackupOnComplete()) return;
+  const r = activeRoutine();
+  if(!r) return;
+  const day = routineDayFor(r, dateStr);
+  if(!day || !day.taskIds.length) return;
+  const allDone = day.taskIds.every(id => (logFor(dateStr,id)||{}).completed);
+  if(allDone){ exportData(); toast('Day complete — backup saved'); }
 }
 
 /* =========================================================================
@@ -793,7 +1044,59 @@ function renderCalendar(){
   }
   grid.innerHTML = html;
   document.getElementById('dayDetailCard').style.display = 'none';
+
+  const isCurrentMonth = todayStr.startsWith(year+'-'+String(month+1).padStart(2,'0')+'-');
+  document.getElementById('jumpTodayBtn').classList.toggle('hidden', isCurrentMonth);
+  document.getElementById('monthSummaryCard').innerHTML = renderMonthSummary(year, month, daysInMonth);
   refreshHeader();
+}
+function calJumpToday(){
+  calCursor = new Date(); calCursor.setDate(1);
+  renderCalendar();
+}
+
+function renderMonthSummary(year, month, daysInMonth){
+  const monthPrefix = year+'-'+String(month+1).padStart(2,'0')+'-';
+  const monthLogs = Object.values(DB.logs).filter(l=>l.date.startsWith(monthPrefix));
+  const activityLogs = monthLogs.filter(hasActivity);
+  const studiedThisMonth = new Set(activityLogs.map(l=>l.date));
+  const totalSeconds = activityLogs.reduce((a,l)=>a+(l.actualSeconds||0),0);
+  const todayStr = todayISO();
+  const isCurrentMonth = todayStr.startsWith(monthPrefix);
+  const daysElapsed = isCurrentMonth ? new Date(todayStr+'T00:00:00').getDate() : daysInMonth;
+  const pct = daysElapsed ? Math.round((studiedThisMonth.size/daysElapsed)*100) : 0;
+
+  if(!activityLogs.length){
+    return `<div class="card"><h3 style="margin-bottom:6px;">This month</h3><p class="sub" style="margin:0;">No activity logged yet.</p></div>`;
+  }
+
+  const perTask = {};
+  monthLogs.filter(l=>l.completed).forEach(l=>{
+    const t = taskById(l.taskId); if(!t) return;
+    perTask[l.taskId] = perTask[l.taskId] || { name:t.name, count:0 };
+    perTask[l.taskId].count++;
+  });
+  const taskRows = Object.values(perTask).sort((a,b)=>b.count-a.count).slice(0,5);
+  const maxCount = Math.max(...taskRows.map(r=>r.count), 1);
+
+  let html = `<div class="card">
+    <h3 style="margin-bottom:12px;">This month</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="v mono">${studiedThisMonth.size}/${daysElapsed}</div><div class="l">days studied</div></div>
+      <div class="stat"><div class="v mono">${pct}%</div><div class="l">consistency</div></div>
+      <div class="stat"><div class="v mono">${Math.round(totalSeconds/3600*10)/10}h</div><div class="l">time logged</div></div>
+      <div class="stat"><div class="v mono">${activityLogs.length}</div><div class="l">sessions</div></div>
+    </div>`;
+  if(taskRows.length){
+    html += `<div class="divider"></div><label style="font-size:12px;color:var(--ink-soft);font-weight:600;">Top tasks this month</label><div style="margin-top:8px;">`;
+    taskRows.forEach(r=>{
+      const barPct = (r.count/maxCount)*100;
+      html += `<div class="bar-row"><div class="lbl">${escapeHtml(r.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${barPct}%"></div></div><div class="bar-val">${r.count}×</div></div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+  return html;
 }
 
 function showDayDetail(dateStr){
@@ -802,9 +1105,10 @@ function showDayDetail(dateStr){
   const logs = logsForDate(dateStr);
   const day = r ? routineDayFor(r, dateStr) : null;
   const niceDate = new Date(dateStr+'T00:00:00').toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'});
+  const openBtn = `<button class="btn btn-ghost btn-sm" onclick="openDayFromCalendar('${dateStr}')">Open this day →</button>`;
 
   if(!logs.length && !day){
-    card.innerHTML = `<h3 style="margin-bottom:6px;">${niceDate}</h3><p class="sub">No activity logged.</p>`;
+    card.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;"><h3>${niceDate}</h3>${openBtn}</div><p class="sub">No activity logged.</p>`;
     card.style.display='block';
     return;
   }
@@ -818,8 +1122,12 @@ function showDayDetail(dateStr){
         <div class="s">${log && log.actualSeconds ? fmtMin(log.actualSeconds)+' min logged' : 'not started'}</div>
       </div></div>`;
   });
-  card.innerHTML = `<h3 style="margin-bottom:6px;">${niceDate}</h3>${rows || '<p class="sub">No tasks scheduled.</p>'}`;
+  card.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;"><h3>${niceDate}</h3>${openBtn}</div>${rows || '<p class="sub">No tasks scheduled.</p>'}`;
   card.style.display = 'block';
+}
+function openDayFromCalendar(dateStr){
+  viewDate = dateStr;
+  switchView('today');
 }
 
 /* =========================================================================
@@ -969,8 +1277,20 @@ function renderManage(){
   const routines = allRoutines.filter(r=>!r.archived);
   const archivedRoutines = allRoutines.filter(r=>r.archived);
   const tasks = Object.values(DB.tasks);
+  const backupDays = daysSinceLastBackup();
+  const backupAgeHtml = backupDays === null
+    ? `<p class="sub" style="margin:10px 0 0;">No backup yet.</p>`
+    : `<p class="sub" style="margin:10px 0 0; ${backupDays>=7?'color:var(--brick);':''}">Last backup: ${backupDays===0?'today':backupDays+' day'+(backupDays===1?'':'s')+' ago'}</p>`;
+  const overviewStreak = computeStreaks();
 
-  let html = `<div class="section-title">Routines</div>`;
+  let html = `<div class="stat-grid">
+    <div class="stat"><div class="v mono">${routines.length}</div><div class="l">active routine${routines.length===1?'':'s'}</div></div>
+    <div class="stat"><div class="v mono">${tasks.length}</div><div class="l">tasks in library</div></div>
+    <div class="stat"><div class="v mono">${studiedDates().size}</div><div class="l">total days studied</div></div>
+    <div class="stat"><div class="v mono">${overviewStreak.best}</div><div class="l">best streak (weeks)</div></div>
+  </div>`;
+
+  html += `<div class="section-title">Routines</div>`;
   if(!routines.length){
     html += emptyState('list','No routines yet','Create a cyclic routine, e.g. a 5-day study cycle.');
   } else {
@@ -1011,10 +1331,14 @@ function renderManage(){
     html += emptyState('list','No tasks yet','Tasks are reusable — build a library, then assign them to routine days.');
   } else {
     tasks.forEach(t=>{
+      const dayCount = countTaskDayAssignments(t.id);
       html += `<div class="list-item">
         <div class="info"><div class="t">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
-          <div class="s">${TASK_TYPES[t.type].label}${t.plannedMinutes?' · '+t.plannedMinutes+'m':''}${t.difficulty?' · '+t.difficulty:''}</div></div>
+          <div class="s">${TASK_TYPES[t.type].label}${t.plannedMinutes?' · '+t.plannedMinutes+'m':''}${t.difficulty?' · '+t.difficulty:''} · on ${dayCount} day${dayCount===1?'':'s'}</div></div>
         <div class="ctrl">
+          <button class="icon-btn" onclick="openAssignDaysModal('${t.id}')" title="Assign to days">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M9 16l2 2 4-4"/></svg>
+          </button>
           <button class="icon-btn" onclick="editTask('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
         </div></div>`;
     });
@@ -1043,6 +1367,15 @@ function renderManage(){
         <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Import JSON</button>
       </div>
       <input type="file" id="importFile" accept="application/json" class="hidden" onchange="importData(this.files[0])">
+      <div class="divider"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:13.5px; font-weight:600;">Auto-backup on day complete</div>
+          <div class="sub" style="margin:2px 0 0;">Silently exports JSON when all of today's tasks are done.</div>
+        </div>
+        <button class="chip ${getAutoBackupOnComplete()?'sel':''}" style="flex:none;" onclick="setAutoBackupOnComplete(${!getAutoBackupOnComplete()})">${getAutoBackupOnComplete()?'On':'Off'}</button>
+      </div>
+      ${backupAgeHtml}
     </div>`;
 
   el.innerHTML = html;
@@ -1058,8 +1391,9 @@ function exportData(){
   const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'study-backup-'+todayISO()+'.json'; a.click();
+  a.href = url; a.download = 'routine-backup-'+todayISO()+'.json'; a.click();
   URL.revokeObjectURL(url);
+  markBackupDone();
 }
 function importData(file){
   if(!file) return;
@@ -1128,6 +1462,53 @@ function deleteTask(id){
   delete DB.tasks[id];
   Object.values(DB.routines).forEach(r=>r.days.forEach(d=>{ d.taskIds = d.taskIds.filter(x=>x!==id); }));
   saveData(); closeModal(); renderManage(); renderToday();
+}
+
+function countTaskDayAssignments(taskId){
+  let count = 0;
+  Object.values(DB.routines).forEach(r=>{ if(!r.archived) r.days.forEach(d=>{ if(d.taskIds.includes(taskId)) count++; }); });
+  return count;
+}
+
+/* ---- Assign a task to days directly from the Task Library — the missing
+   link that used to force going through the full routine editor just to
+   attach an existing task to a day. Mutates DB.routines directly (no draft/
+   save step) since it's a single, low-risk toggle, same as Set Active. ---- */
+function openAssignDaysModal(taskId){
+  const routines = Object.values(DB.routines).filter(r=>!r.archived);
+  if(!routines.length){ toast('Create a routine first'); return; }
+  const defaultId = (DB.settings.activeRoutineId && DB.routines[DB.settings.activeRoutineId] && !DB.routines[DB.settings.activeRoutineId].archived)
+    ? DB.settings.activeRoutineId : routines[0].id;
+  renderAssignDaysModal(taskId, defaultId);
+}
+function renderAssignDaysModal(taskId, routineId){
+  const t = taskById(taskId);
+  const routines = Object.values(DB.routines).filter(r=>!r.archived);
+  const r = DB.routines[routineId];
+  const routineOptions = routines.map(rt=>`<option value="${rt.id}" ${rt.id===routineId?'selected':''}>${escapeHtml(rt.name)}</option>`).join('');
+  const dayRows = r.days.length ? r.days.map((d,i)=>{
+    const sel = d.taskIds.includes(taskId);
+    return `<button class="chip ${sel?'sel':''}" style="width:100%; display:flex; align-items:center; text-align:left; margin-bottom:6px;" onclick="toggleTaskInDay('${routineId}',${i},'${taskId}')">
+      <span style="flex:1;">${sel?'✓ ':''}${escapeHtml(d.name||('Day '+(i+1)))}</span>
+      <span style="opacity:.65; font-size:11px;">${d.taskIds.length} task${d.taskIds.length===1?'':'s'}</span>
+    </button>`;
+  }).join('') : '<p class="sub">This routine has no days yet.</p>';
+
+  openModal(`
+    <div class="modal-head"><h3>Assign "${escapeHtml(t.name)}"</h3><button class="xbtn" onclick="closeModal()">✕</button></div>
+    ${routines.length>1 ? `<div class="field"><label>Routine</label><select id="assignRoutineSelect" onchange="renderAssignDaysModal('${taskId}', this.value)">${routineOptions}</select></div>` : ''}
+    <label style="font-size:12px;color:var(--ink-soft);font-weight:600;">Days in ${escapeHtml(r.name)}</label>
+    <div style="margin-top:8px;">${dayRows}</div>
+    <button class="btn btn-primary btn-block" style="margin-top:10px;" onclick="closeModal(); renderManage();">Done</button>
+  `);
+}
+function toggleTaskInDay(routineId, dayIdx, taskId){
+  const day = DB.routines[routineId].days[dayIdx];
+  const idx = day.taskIds.indexOf(taskId);
+  if(idx>-1) day.taskIds.splice(idx,1); else day.taskIds.push(taskId);
+  saveData();
+  renderAssignDaysModal(taskId, routineId);
+  renderToday();
 }
 
 /* ---- Routine editor (LiftLog-style: build days as a list, edit each separately) ---- */
@@ -1274,6 +1655,41 @@ function restoreRoutine(id){
 }
 
 /* =========================================================================
+   SWIPE NAVIGATION (Today view only — swipe left/right to move a day,
+   same gesture tuning as LiftLog: ignores multi-touch, taps on the date
+   strip itself or on form inputs, slow drags, and predominantly-vertical
+   drags so it never fights normal scrolling).
+   ========================================================================= */
+let swipeStartX = null, swipeStartY = null, swipeStartTime = 0;
+const SWIPE_MIN_DX = 45;
+const SWIPE_MAX_DY = 70;
+const SWIPE_TIME_LIMIT = 700;
+
+function handleSwipeStart(e){
+  if(e.touches.length !== 1){ swipeStartX = null; return; }
+  if(e.target.closest('.date-strip') || e.target.closest('input, textarea, select') || e.target.closest('.modal')){ swipeStartX = null; return; }
+  const activeView = document.querySelector('.view.active');
+  if(!activeView || activeView.id !== 'view-today'){ swipeStartX = null; return; }
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+  swipeStartTime = Date.now();
+}
+function handleSwipeEnd(e){
+  if(swipeStartX === null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipeStartX;
+  const dy = t.clientY - swipeStartY;
+  const dt = Date.now() - swipeStartTime;
+  swipeStartX = null;
+  if(dt > SWIPE_TIME_LIMIT) return;
+  if(Math.abs(dx) < SWIPE_MIN_DX) return;
+  if(Math.abs(dy) > SWIPE_MAX_DY) return;
+  if(Math.abs(dx) < Math.abs(dy)) return;
+  const direction = dx < 0 ? 1 : -1; // swipe left = next day, swipe right = previous day
+  shiftViewDate(direction);
+}
+
+/* =========================================================================
    UTIL
    ========================================================================= */
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1288,6 +1704,10 @@ function emptyState(icon, title, sub, extra){
 function init(){
   switchView('today');
   refreshHeader();
+  const app = document.getElementById('app');
+  app.addEventListener('touchstart', handleSwipeStart, { passive:true });
+  app.addEventListener('touchend', handleSwipeEnd, { passive:true });
+  app.addEventListener('touchcancel', ()=>{ swipeStartX = null; }, { passive:true });
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
