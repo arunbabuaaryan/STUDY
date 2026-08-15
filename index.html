@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF1EE">
+<title>Study</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3A31'/%3E%3Cpath d='M50 33c-7-5-20-6-30-2v42c10-4 23-3 30 2 7-5 20-6 30-2V31c-10-4-23-3-30 2z' fill='none' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M50 33v42' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231F3A31'/%3E%3Cpath d='M50 33c-7-5-20-6-30-2v42c10-4 23-3 30 2 7-5 20-6 30-2V31c-10-4-23-3-30 2z' fill='none' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M50 33v42' stroke='%23E8A33D' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --paper:#EEF1EE;
+  --paper-raised:#FFFFFF;
+  --ink:#17231F;
+  --ink-soft:#4A5951;
+  --ink-faint:#8B968F;
+  --line:#DCE2DD;
+  --teal:#25594B;
+  --teal-soft:#DCEAE4;
+  --ember:#C97A2E;
+  --ember-soft:#F6E4CC;
+  --brick:#A5432F;
+  --brick-soft:#F5DCD5;
+  --radius:14px;
+  --radius-sm:9px;
+  --shadow:0 1px 2px rgba(23,35,31,.06), 0 4px 16px rgba(23,35,31,.05);
+  --display:'Fraunces',Georgia,serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+[data-theme="dark"]{
+  --paper:#141B18;
+  --paper-raised:#1C2521;
+  --ink:#EDF1EE;
+  --ink-soft:#AEB9B2;
+  --ink-faint:#68746D;
+  --line:#2B3733;
+  --teal:#5CB89E;
+  --teal-soft:#1F3630;
+  --ember:#E8A33D;
+  --ember-soft:#33291A;
+  --brick:#E08770;
+  --brick-soft:#3A2420;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--body);
+  min-height:100vh; min-height:100dvh; padding-bottom:78px;
+  transition:background .25s ease, color .25s ease;
+}
+h1,h2,h3{font-family:var(--display); font-weight:600; margin:0;}
+.mono{font-family:var(--mono);}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+/* ============ LAYOUT ============ */
+#app{max-width:560px; margin:0 auto; padding:0 16px;}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:20px 0 12px;
+}
+.brand{display:flex; align-items:baseline; gap:8px;}
+.brand h1{font-size:22px; letter-spacing:-.01em;}
+.brand .tag{font-size:11px; color:var(--ink-faint); font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em;}
+.streakpill{
+  display:flex; align-items:center; gap:6px; background:var(--ember-soft); color:var(--ember);
+  padding:6px 12px; border-radius:99px; font-family:var(--mono); font-weight:600; font-size:14px;
+}
+.streakpill svg{width:15px;height:15px;}
+
+.view{display:none; animation:fadein .2s ease;}
+.view.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+/* ============ NAV ============ */
+nav.tabbar{
+  position:fixed; bottom:0; left:0; right:0; background:var(--paper-raised);
+  border-top:1px solid var(--line); display:flex; padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  z-index:40; max-width:560px; margin:0 auto;
+}
+nav.tabbar .tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:none; border:none; color:var(--ink-faint); padding:8px 4px; border-radius:10px; font-size:11px;
+}
+nav.tabbar .tab svg{width:20px;height:20px;}
+nav.tabbar .tab.active{color:var(--teal);}
+nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
+
+/* ============ CARDS ============ */
+.card{
+  background:var(--paper-raised); border-radius:var(--radius); padding:16px;
+  box-shadow:var(--shadow); margin-bottom:12px; border:1px solid var(--line);
+}
+.card h3{font-size:15px; margin-bottom:10px;}
+.section-title{font-family:var(--mono); text-transform:uppercase; font-size:11px; letter-spacing:.09em; color:var(--ink-faint); margin:22px 0 10px; display:flex; align-items:center; gap:8px;}
+.section-title::after{content:''; flex:1; height:1px; background:var(--line);}
+
+/* ============ TASK CARD ============ */
+.task{
+  display:flex; align-items:center; gap:12px; padding:13px 14px; background:var(--paper-raised);
+  border:1px solid var(--line); border-radius:var(--radius-sm); margin-bottom:8px; transition:all .2s ease;
+}
+.task.done{background:var(--teal-soft); border-color:var(--teal-soft);}
+.task .check{
+  width:26px; height:26px; border-radius:50%; border:2px solid var(--line); flex:none;
+  display:flex; align-items:center; justify-content:center; background:var(--paper-raised); transition:all .15s ease;
+}
+.task.done .check{background:var(--teal); border-color:var(--teal);}
+.task .check svg{width:14px;height:14px; stroke:white; opacity:0; transform:scale(.5); transition:all .15s ease;}
+.task.done .check svg{opacity:1; transform:scale(1);}
+.task .body{flex:1; min-width:0;}
+.task .name{font-size:15px; font-weight:500;}
+.task.done .name{text-decoration:line-through; color:var(--ink-soft);}
+.task .meta{font-size:12px; color:var(--ink-faint); font-family:var(--mono); margin-top:2px;}
+.task .actions{display:flex; align-items:center; gap:6px;}
+.icon-btn{
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--paper-raised);
+  display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex:none;
+}
+.icon-btn svg{width:16px;height:16px;}
+.icon-btn.on{background:var(--teal); border-color:var(--teal); color:#fff;}
+.diff-tag{font-size:10px; padding:2px 7px; border-radius:99px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.04em;}
+.diff-easy{background:var(--teal-soft); color:var(--teal);}
+.diff-medium{background:var(--ember-soft); color:var(--ember);}
+.diff-hard{background:var(--brick-soft); color:var(--brick);}
+
+/* ============ DAY BANNER ============ */
+.banner{
+  display:flex; align-items:center; gap:12px; padding:16px; border-radius:var(--radius);
+  background:linear-gradient(135deg, var(--teal), #1B4238); color:#fff; margin-bottom:14px;
+  box-shadow:0 6px 22px rgba(37,89,75,.35); animation:bannerIn .4s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes bannerIn{from{opacity:0; transform:scale(.94) translateY(6px);} to{opacity:1; transform:scale(1) translateY(0);}}
+.banner .ico{width:38px;height:38px; flex:none;}
+.banner h3{color:#fff; font-size:17px;}
+.banner p{margin:2px 0 0; font-size:12.5px; opacity:.85; font-family:var(--mono);}
+
+/* ============ TIMER ============ */
+.timer-wrap{display:flex; flex-direction:column; align-items:center; padding:22px 10px 8px;}
+.dial{position:relative; width:190px; height:190px; margin-bottom:14px;}
+.dial svg{transform:rotate(-90deg);}
+.dial .track{stroke:var(--line); fill:none; stroke-width:8;}
+.dial .prog{stroke:var(--ember); fill:none; stroke-width:8; stroke-linecap:round; transition:stroke-dashoffset .3s linear;}
+.dial .digits{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.dial .digits .t{font-family:var(--mono); font-size:34px; font-weight:600; letter-spacing:-.02em;}
+.dial .digits .l{font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; margin-top:2px;}
+.timer-controls{display:flex; gap:10px;}
+.btn{
+  border:none; border-radius:99px; padding:11px 20px; font-size:14px; font-weight:600;
+  display:flex; align-items:center; gap:6px;
+}
+.btn-primary{background:var(--teal); color:#fff;}
+.btn-ghost{background:var(--paper); color:var(--ink); border:1px solid var(--line);}
+.btn-ember{background:var(--ember); color:#fff;}
+.btn-brick{background:var(--brick-soft); color:var(--brick);}
+.btn-block{width:100%; justify-content:center; padding:13px;}
+.btn:disabled{opacity:.4;}
+.btn-sm{padding:7px 14px; font-size:12.5px; border-radius:99px;}
+
+/* ============ FORMS ============ */
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px; font-weight:600;}
+.field input[type=text], .field input[type=number], .field select, .field textarea{
+  width:100%; padding:11px 12px; border-radius:var(--radius-sm); border:1px solid var(--line);
+  background:var(--paper); color:var(--ink); font-size:14px;
+}
+.field textarea{resize:vertical; min-height:60px;}
+.row{display:flex; gap:10px;}
+.row > *{flex:1;}
+.chiprow{display:flex; gap:6px; flex-wrap:wrap;}
+.chip{
+  padding:7px 13px; border-radius:99px; border:1px solid var(--line); background:var(--paper-raised);
+  font-size:13px; color:var(--ink-soft);
+}
+.chip.sel{background:var(--teal); border-color:var(--teal); color:#fff;}
+
+/* ============ CALENDAR ============ */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.cal-head h3{font-size:16px;}
+.cal-nav{display:flex; gap:4px;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+.cal-dow{font-size:10px; text-align:center; color:var(--ink-faint); font-family:var(--mono); padding-bottom:4px;}
+.cal-cell{
+  aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:11.5px; font-family:var(--mono); position:relative; background:var(--paper);
+  border:1px solid transparent; color:var(--ink-soft);
+}
+.cal-cell.pad{background:none;}
+.cal-cell.level-1{background:var(--teal-soft); color:var(--teal);}
+.cal-cell.level-2{background:#9FCBBB; color:#0E2E24;}
+.cal-cell.level-3{background:var(--teal); color:#fff; font-weight:700;}
+.cal-cell.today{border-color:var(--ember); color:var(--ember); font-weight:700;}
+.legend{display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--ink-faint); margin-top:10px; font-family:var(--mono);}
+.legend .sw{width:11px; height:11px; border-radius:3px;}
+
+/* ============ TRENDS ============ */
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.stat{background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px;}
+.stat .v{font-family:var(--mono); font-size:22px; font-weight:700;}
+.stat .l{font-size:11px; color:var(--ink-faint); margin-top:2px;}
+.bar-row{display:flex; align-items:center; gap:10px; margin-bottom:9px;}
+.bar-row .lbl{width:74px; font-size:12px; color:var(--ink-soft); flex:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.bar-track{flex:1; height:9px; background:var(--paper); border-radius:99px; overflow:hidden;}
+.bar-fill{height:100%; background:var(--teal); border-radius:99px;}
+.bar-val{font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); width:34px; text-align:right; flex:none;}
+
+/* ============ MANAGE / LISTS ============ */
+.list-item{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line);}
+.list-item:last-child{border-bottom:none;}
+.list-item .info .t{font-size:14.5px; font-weight:600;}
+.list-item .info .s{font-size:12px; color:var(--ink-faint); margin-top:2px;}
+.list-item .ctrl{display:flex; gap:6px;}
+.empty{text-align:center; padding:36px 16px; color:var(--ink-faint);}
+.empty svg{width:40px;height:40px; margin-bottom:10px; opacity:.5;}
+.empty p{font-size:13.5px; margin-top:4px;}
+
+/* ============ MODAL ============ */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(15,20,18,.5); display:none; align-items:flex-end;
+  justify-content:center; z-index:100; backdrop-filter:blur(2px);
+}
+.modal-backdrop.active{display:flex; animation:fadein .15s ease;}
+.modal{
+  background:var(--paper-raised); border-radius:20px 20px 0 0; width:100%; max-width:560px;
+  max-height:88vh; overflow-y:auto; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  animation:slideUp .25s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes slideUp{from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+.modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+.modal-head h3{font-size:17px;}
+.xbtn{width:30px; height:30px; border-radius:50%; border:none; background:var(--paper); display:flex; align-items:center; justify-content:center; color:var(--ink-soft);}
+
+.day-tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px;}
+.day-tabs::-webkit-scrollbar{display:none;}
+.day-tab{flex:none; padding:9px 15px; border-radius:99px; border:1px solid var(--line); background:var(--paper-raised); font-size:13px; color:var(--ink-soft); white-space:nowrap;}
+.day-tab.sel{background:var(--teal); border-color:var(--teal); color:#fff; font-weight:600;}
+
+.toast{
+  position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(10px); opacity:0;
+  background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:99px; font-size:13px;
+  z-index:200; transition:all .25s ease; pointer-events:none; max-width:90%; text-align:center;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.sub{font-size:13px; color:var(--ink-faint); margin:2px 0 16px;}
+.link-btn{background:none; border:none; color:var(--teal); font-size:13px; font-weight:600; padding:0;}
+.divider{height:1px; background:var(--line); margin:16px 0;}
+.hidden{display:none !important;}
+
+::-webkit-scrollbar{width:0; height:0;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <h1>Study</h1>
+      <span class="tag" id="activeRoutineLabel">no routine</span>
+    </div>
+    <div class="streakpill" id="streakPill">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4-3 5-3 9a3 3 0 006 0c1-2-1-3-1-5 2 1 4 4 4 7a6 6 0 01-12 0c0-5 3-7 6-11z"/></svg>
+      <span id="streakCount">0</span>
+    </div>
+  </div>
+
+  <!-- TODAY VIEW -->
+  <div class="view active" id="view-today">
+    <div id="todayContent"></div>
+  </div>
+
+  <!-- CALENDAR VIEW -->
+  <div class="view" id="view-calendar">
+    <div class="card">
+      <div class="cal-head">
+        <button class="icon-btn" onclick="calShift(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h3 id="calMonthLabel"></h3>
+        <button class="icon-btn" onclick="calShift(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="legend">
+        <span class="sw" style="background:var(--paper);border:1px solid var(--line)"></span> none
+        <span class="sw" style="background:var(--teal-soft)"></span> partial
+        <span class="sw" style="background:var(--teal)"></span> full
+        <span style="margin-left:auto">weekly threshold: <b id="threshLabel">3</b> days</span>
+      </div>
+    </div>
+    <div class="card" id="dayDetailCard" style="display:none;"></div>
+  </div>
+
+  <!-- TRENDS VIEW -->
+  <div class="view" id="view-trends">
+    <div id="trendsContent"></div>
+  </div>
+
+  <!-- MANAGE VIEW -->
+  <div class="view" id="view-manage">
+    <div id="manageContent"></div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab active" data-view="today" onclick="switchView('today')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Today
+  </button>
+  <button class="tab" data-view="calendar" onclick="switchView('calendar')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    Calendar
+  </button>
+  <button class="tab" data-view="trends" onclick="switchView('trends')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/></svg>
+    Trends
+  </button>
+  <button class="tab" data-view="manage" onclick="switchView('manage')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
+    Manage
+  </button>
+</nav>
+
+<div class="modal-backdrop" id="modalBackdrop"><div class="modal" id="modalBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   DATA LAYER — normalized store, versioned migrations, plug-in task types
+   ========================================================================= */
+const DB_KEY = 'studylog_v1';
+const SCHEMA_VERSION = 1;
+
+function defaultData(){
+  return {
+    version: SCHEMA_VERSION,
+    routines: {},   // id -> {id, name, days:[{dayIndex, name, taskIds:[]}], startDate, archived, createdAt}
+    tasks: {},      // id -> {id, name, icon, type, difficulty, plannedMinutes, archived, createdAt}
+    logs: {},        // id -> {id, date, routineId, dayIndex, taskId, completed, actualSeconds, plannedSeconds, note, completedAt}
+    settings: { activeRoutineId:null, streakThreshold:3, theme:'light' }
+  };
+}
+
+// MIGRATIONS: array of {version, migrate(data)} applied in order for forward-compatible schema evolution.
+const MIGRATIONS = [
+  // { version: 2, migrate(data){ ... return data; } }
+];
+
+function loadData(){
+  let raw;
+  try{ raw = JSON.parse(localStorage.getItem(DB_KEY)); }catch(e){ raw = null; }
+  if(!raw) return defaultData();
+  let data = raw;
+  for(const m of MIGRATIONS){
+    if((data.version||0) < m.version){ data = m.migrate(data); data.version = m.version; }
+  }
+  data.version = SCHEMA_VERSION;
+  data.settings = Object.assign({activeRoutineId:null, streakThreshold:3, theme:'light'}, data.settings||{});
+  return data;
+}
+function saveData(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+
+let DB = loadData();
+if(DB.settings.theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function todayISO(d){ d = d || new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtTime(sec){ sec = Math.max(0,Math.round(sec)); const m = Math.floor(sec/60), s = sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+function fmtMin(sec){ return Math.round(sec/60); }
+
+/* TASK_TYPES registry — plug-in point for new task kinds later (e.g. 'reading', 'flashcards').
+   Each type controls whether a timer/estimate is shown and how completion is captured. */
+const TASK_TYPES = {
+  checklist: { label:'Simple check-off', hasTimer:false },
+  timed:     { label:'Timed task', hasTimer:true },
+};
+
+/* =========================================================================
+   ROUTINE / CYCLE HELPERS
+   ========================================================================= */
+function activeRoutine(){ return DB.settings.activeRoutineId ? DB.routines[DB.settings.activeRoutineId] : null; }
+
+function dayIndexForDate(routine, dateStr){
+  if(!routine || !routine.days.length) return null;
+  const start = new Date(routine.startDate+'T00:00:00');
+  const d = new Date(dateStr+'T00:00:00');
+  const diff = Math.floor((d - start) / 86400000);
+  if(diff < 0) return null;
+  return diff % routine.days.length;
+}
+function routineDayFor(routine, dateStr){
+  const idx = dayIndexForDate(routine, dateStr);
+  if(idx === null) return null;
+  return routine.days[idx];
+}
+function taskById(id){ return DB.tasks[id]; }
+
+function logsForDate(dateStr){
+  return Object.values(DB.logs).filter(l => l.date === dateStr);
+}
+function logFor(dateStr, taskId){
+  return Object.values(DB.logs).find(l => l.date === dateStr && l.taskId === taskId);
+}
+function upsertLog(patch){
+  let log = logFor(patch.date, patch.taskId);
+  if(!log){
+    log = { id: uid(), date: patch.date, routineId: patch.routineId, dayIndex: patch.dayIndex,
+      taskId: patch.taskId, completed:false, actualSeconds:0, plannedSeconds:patch.plannedSeconds||0, note:'', completedAt:null };
+    DB.logs[log.id] = log;
+  }
+  Object.assign(log, patch);
+  saveData();
+  return log;
+}
+
+/* Any date with logged activity (completed OR time actually logged) counts as "studied". */
+function hasActivity(log){ return !!(log.completed || (log.actualSeconds||0) > 0); }
+function studiedDates(){
+  const set = new Set();
+  Object.values(DB.logs).forEach(l => { if(hasActivity(l)) set.add(l.date); });
+  return set;
+}
+
+/* Weekly streak: a week (Mon-Sun) counts if it has >= threshold distinct studied dates.
+   Current streak = consecutive qualifying weeks ending at the most recent qualifying week
+   (current in-progress week doesn't break the streak while still time to hit threshold). */
+function weekStart(date){ // Monday
+  const d = new Date(date+'T00:00:00');
+  const day = (d.getDay()+6)%7; // 0=Mon
+  d.setDate(d.getDate()-day);
+  return todayISO(d);
+}
+function weekKey(dateStr){ return weekStart(dateStr); }
+
+function computeStreaks(){
+  const studied = studiedDates();
+  const threshold = DB.settings.streakThreshold || 3;
+  const byWeek = {};
+  studied.forEach(ds => { const wk = weekKey(ds); (byWeek[wk] = byWeek[wk]||new Set()).add(ds); });
+
+  const curWeekKey = weekKey(todayISO());
+  const curWeekCount = (byWeek[curWeekKey]||new Set()).size;
+
+  // Walk backwards week by week from the last fully-qualifying week.
+  let current = 0, best = 0, run = 0;
+  const weeksSorted = Object.keys(byWeek).sort();
+  if(weeksSorted.length){
+    const first = new Date(weeksSorted[0]+'T00:00:00');
+    const lastWeek = new Date(curWeekKey+'T00:00:00');
+    for(let d = new Date(first); d <= lastWeek; d.setDate(d.getDate()+7)){
+      const wk = todayISO(d);
+      const count = (byWeek[wk]||new Set()).size;
+      const qualifies = count >= threshold;
+      if(qualifies){ run++; best = Math.max(best, run); }
+      else if(wk !== curWeekKey){ run = 0; } // current week in progress doesn't zero the run
+    }
+    current = run;
+  }
+  return { current, best, curWeekCount, threshold };
+}
+
+/* =========================================================================
+   TOAST / MODAL
+   ========================================================================= */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalBackdrop').classList.add('active');
+}
+function closeModal(){ document.getElementById('modalBackdrop').classList.remove('active'); }
+document.getElementById('modalBackdrop').addEventListener('click', e => { if(e.target.id==='modalBackdrop') closeModal(); });
+
+/* =========================================================================
+   NAV
+   ========================================================================= */
+function switchView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active', el.dataset.view===v));
+  if(v==='today') renderToday();
+  if(v==='calendar') renderCalendar();
+  if(v==='trends') renderTrends();
+  if(v==='manage') renderManage();
+}
+
+function refreshHeader(){
+  const r = activeRoutine();
+  document.getElementById('activeRoutineLabel').textContent = r ? r.name : 'no routine set';
+  const s = computeStreaks();
+  document.getElementById('streakCount').textContent = s.current;
+}
+
+/* =========================================================================
+   TIMER ENGINE
+   ========================================================================= */
+let timerState = null; // {taskId, startedAt, elapsedBefore, plannedSeconds, raf, running}
+
+function startTimer(taskId, plannedSeconds){
+  stopTimerLoop();
+  timerState = { taskId, startedAt: Date.now(), elapsedBefore:0, plannedSeconds: plannedSeconds||0, running:true };
+  tickTimer();
+}
+function pauseTimer(){
+  if(!timerState || !timerState.running) return;
+  timerState.elapsedBefore += (Date.now() - timerState.startedAt)/1000;
+  timerState.running = false;
+  stopTimerLoop();
+  renderToday();
+}
+function resumeTimer(){
+  if(!timerState || timerState.running) return;
+  timerState.startedAt = Date.now();
+  timerState.running = true;
+  tickTimer();
+}
+function currentElapsed(){
+  if(!timerState) return 0;
+  return timerState.elapsedBefore + (timerState.running ? (Date.now()-timerState.startedAt)/1000 : 0);
+}
+function stopTimerLoop(){ if(timerState && timerState._raf) cancelAnimationFrame(timerState._raf); }
+function tickTimer(){
+  if(!timerState || !timerState.running) return;
+  updateDialDisplay();
+  timerState._raf = requestAnimationFrame(tickTimer);
+}
+function updateDialDisplay(){
+  const dt = document.getElementById('dialTime');
+  const dp = document.getElementById('dialProg');
+  if(!dt || !timerState) return;
+  const el = currentElapsed();
+  dt.textContent = fmtTime(el);
+  if(timerState.plannedSeconds > 0 && dp){
+    const pct = Math.min(1, el/timerState.plannedSeconds);
+    const C = 2*Math.PI*85;
+    dp.style.strokeDasharray = C;
+    dp.style.strokeDashoffset = C * (1-pct);
+  }
+}
+function finishTimer(mark){
+  if(!timerState) return;
+  const el = Math.round(currentElapsed());
+  const taskId = timerState.taskId;
+  stopTimerLoop();
+  const r = activeRoutine();
+  const dateStr = todayISO();
+  const dayIdx = r ? dayIndexForDate(r, dateStr) : null;
+  const log = upsertLog({ date:dateStr, routineId:r?r.id:null, dayIndex:dayIdx, taskId,
+    actualSeconds: (logFor(dateStr,taskId)?.actualSeconds||0) + el,
+    plannedSeconds: timerState.plannedSeconds, completed: mark });
+  timerState = null;
+  if(mark) toast('Task completed');
+  renderToday();
+  maybeShowDayBanner();
+}
+
+/* =========================================================================
+   RENDER: TODAY
+   ========================================================================= */
+function renderToday(){
+  const el = document.getElementById('todayContent');
+  const r = activeRoutine();
+  if(!r){
+    el.innerHTML = emptyState('calendar', 'No active routine', 'Create a routine in Manage to start tracking today&#39;s tasks.',
+      '<button class="btn btn-primary btn-block" onclick="switchView(\'manage\')">Go to Manage</button>');
+    refreshHeader();
+    return;
+  }
+  const dateStr = todayISO();
+  const day = routineDayFor(r, dateStr);
+  const dayIdx = dayIndexForDate(r, dateStr);
+  if(!day){
+    el.innerHTML = emptyState('calendar','Routine hasn&#39;t started yet', 'Its start date is in the future.');
+    refreshHeader();
+    return;
+  }
+  const tasks = day.taskIds.map(taskById).filter(Boolean);
+  const logs = tasks.map(t => logFor(dateStr, t.id));
+  const allDone = tasks.length>0 && logs.every(l => l && l.completed);
+
+  let html = '';
+  html += `<div class="section-title">Day ${dayIdx+1} of ${r.days.length} · ${day.name||''}</div>`;
+
+  if(allDone){
+    html += `<div class="banner">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+      <div><h3>All tasks finished</h3><p>${tasks.length} task${tasks.length>1?'s':''} completed today. Nice work.</p></div>
+    </div>`;
+  }
+
+  if(!tasks.length){
+    html += emptyState('calendar','No tasks for this day','Add tasks to this routine day from Manage.');
+  } else {
+    tasks.forEach(t=>{
+      const log = logFor(dateStr, t.id);
+      const done = !!(log && log.completed);
+      const isTimed = t.type === 'timed';
+      const isActiveTimer = timerState && timerState.taskId === t.id;
+      html += `<div class="task ${done?'done':''}" id="task-${t.id}">
+        <button class="check" onclick="toggleTask('${t.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+        <div class="body">
+          <div class="name">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
+          <div class="meta">${t.difficulty?`<span class="diff-tag diff-${t.difficulty}">${t.difficulty}</span> · `:''}${isTimed ? (t.plannedMinutes?t.plannedMinutes+' min planned':'timed') : 'checklist'}${log && log.actualSeconds ? ' · logged '+fmtMin(log.actualSeconds)+'m' : ''}</div>
+        </div>
+        <div class="actions">
+          ${isTimed ? `<button class="icon-btn ${isActiveTimer?'on':''}" onclick="openTimer('${t.id}')" title="Timer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          </button>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+
+  if(timerState){
+    html += renderTimerPanel();
+  }
+
+  el.innerHTML = html;
+  if(timerState) updateDialDisplay();
+  refreshHeader();
+}
+
+function renderTimerPanel(){
+  const t = taskById(timerState.taskId);
+  if(!t) return '';
+  const planned = timerState.plannedSeconds;
+  return `<div class="card timer-wrap">
+    <h3 style="margin-bottom:14px;">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</h3>
+    <div class="dial">
+      <svg width="190" height="190" viewBox="0 0 190 190">
+        <circle class="track" cx="95" cy="95" r="85"/>
+        <circle class="prog" id="dialProg" cx="95" cy="95" r="85" style="stroke-dasharray:${2*Math.PI*85}; stroke-dashoffset:${2*Math.PI*85};"/>
+      </svg>
+      <div class="digits">
+        <div class="t mono" id="dialTime">00:00</div>
+        <div class="l">${planned? 'of '+Math.round(planned/60)+' min' : 'no estimate'}</div>
+      </div>
+    </div>
+    <div class="timer-controls">
+      ${timerState.running
+        ? `<button class="btn btn-ghost" onclick="pauseTimer()">Pause</button>`
+        : `<button class="btn btn-ghost" onclick="resumeTimer()">Resume</button>`}
+      <button class="btn btn-primary" onclick="finishTimer(true)">Mark done</button>
+      <button class="btn btn-brick" onclick="stopTimerNoComplete()">Stop</button>
+    </div>
+  </div>`;
+}
+function stopTimerNoComplete(){ finishTimer(false); }
+
+function openTimer(taskId){
+  const t = taskById(taskId);
+  if(timerState && timerState.taskId !== taskId){
+    if(!confirm('Switch task? Current timer progress on "'+ (taskById(timerState.taskId)||{}).name +'" will be lost unless you finish it first.')) return;
+  }
+  startTimer(taskId, (t.plannedMinutes||0)*60);
+  renderToday();
+}
+
+function toggleTask(taskId){
+  const r = activeRoutine();
+  const dateStr = todayISO();
+  const dayIdx = dayIndexForDate(r, dateStr);
+  const t = taskById(taskId);
+  const existing = logFor(dateStr, taskId);
+  const nowDone = !(existing && existing.completed);
+
+  if(!nowDone && existing && existing.completed){
+    upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId, completed:false });
+    renderToday();
+    return;
+  }
+  // marking done
+  const day = routineDayFor(r, dateStr);
+  const doneCountBefore = day.taskIds.filter(id => logFor(dateStr,id)?.completed).length;
+  if(doneCountBefore === 0){
+    // first task of the day — no special confirm needed
+  }
+  const plannedSec = (TASK_TYPES[t.type] && TASK_TYPES[t.type].hasTimer) ? (t.plannedMinutes||0)*60 : 0;
+  upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId, completed:true, plannedSeconds:plannedSec });
+  renderToday();
+  maybeShowDayBanner();
+}
+
+function maybeShowDayBanner(){
+  // banner is rendered as part of renderToday() when all tasks are done; nothing extra needed here.
+}
+
+/* =========================================================================
+   RENDER: CALENDAR
+   ========================================================================= */
+let calCursor = new Date(); calCursor.setDate(1);
+function calShift(n){ calCursor.setMonth(calCursor.getMonth()+n); renderCalendar(); }
+
+function completionLevelFor(dateStr){
+  const r = activeRoutine();
+  const logs = logsForDate(dateStr);
+  const activeCount = logs.filter(hasActivity).length;
+  const doneCount = logs.filter(l=>l.completed).length;
+  if(activeCount === 0) return 0;
+  const day = r ? routineDayFor(r, dateStr) : null;
+  const scheduled = day ? day.taskIds.length : null;
+  if(scheduled && doneCount >= scheduled) return 3;
+  if(scheduled && activeCount >= Math.ceil(scheduled/2)) return 2;
+  return 1;
+}
+
+function renderCalendar(){
+  document.getElementById('threshLabel').textContent = DB.settings.streakThreshold;
+  const label = calCursor.toLocaleDateString(undefined,{month:'long', year:'numeric'});
+  document.getElementById('calMonthLabel').textContent = label;
+
+  const grid = document.getElementById('calGrid');
+  const dows = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  let html = dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const year = calCursor.getFullYear(), month = calCursor.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startPad = (firstDay.getDay()+6)%7;
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayStr = todayISO();
+
+  for(let i=0;i<startPad;i++) html += `<div class="cal-cell pad"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const level = completionLevelFor(dateStr);
+    const isToday = dateStr === todayStr;
+    html += `<div class="cal-cell level-${level} ${isToday?'today':''}" onclick="showDayDetail('${dateStr}')">${d}</div>`;
+  }
+  grid.innerHTML = html;
+  document.getElementById('dayDetailCard').style.display = 'none';
+  refreshHeader();
+}
+
+function showDayDetail(dateStr){
+  const r = activeRoutine();
+  const card = document.getElementById('dayDetailCard');
+  const logs = logsForDate(dateStr);
+  const day = r ? routineDayFor(r, dateStr) : null;
+  const niceDate = new Date(dateStr+'T00:00:00').toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'});
+
+  if(!logs.length && !day){
+    card.innerHTML = `<h3 style="margin-bottom:6px;">${niceDate}</h3><p class="sub">No activity logged.</p>`;
+    card.style.display='block';
+    return;
+  }
+  let rows = '';
+  const taskIds = day ? day.taskIds : logs.map(l=>l.taskId);
+  taskIds.forEach(tid=>{
+    const t = taskById(tid); if(!t) return;
+    const log = logs.find(l=>l.taskId===tid);
+    rows += `<div class="list-item"><div class="info">
+        <div class="t">${log && log.completed ? '✅' : '⬜'} ${escapeHtml(t.name)}</div>
+        <div class="s">${log && log.actualSeconds ? fmtMin(log.actualSeconds)+' min logged' : 'not started'}</div>
+      </div></div>`;
+  });
+  card.innerHTML = `<h3 style="margin-bottom:6px;">${niceDate}</h3>${rows || '<p class="sub">No tasks scheduled.</p>'}`;
+  card.style.display = 'block';
+}
+
+/* =========================================================================
+   RENDER: TRENDS
+   ========================================================================= */
+function renderTrends(){
+  const el = document.getElementById('trendsContent');
+  const logs = Object.values(DB.logs).filter(l=>l.completed);
+  const s = computeStreaks();
+
+  if(!logs.length){
+    el.innerHTML = emptyState('bar','No data yet','Complete a few tasks and trends will show up here.');
+    return;
+  }
+
+  const totalSeconds = logs.reduce((a,l)=>a+(l.actualSeconds||0),0);
+  const totalDaysStudied = studiedDates().size;
+  const avgSessionMin = Math.round((totalSeconds/logs.length)/60) || 0;
+
+  // per-task aggregation
+  const perTask = {};
+  logs.forEach(l=>{
+    const t = taskById(l.taskId); if(!t) return;
+    perTask[l.taskId] = perTask[l.taskId] || { name:t.name, count:0, totalSec:0, plannedSec:0 };
+    perTask[l.taskId].count++;
+    perTask[l.taskId].totalSec += (l.actualSeconds||0);
+    perTask[l.taskId].plannedSec += (l.plannedSeconds||0);
+  });
+  const taskRows = Object.values(perTask).sort((a,b)=>b.count-a.count).slice(0,8);
+  const timedTaskRows = taskRows.filter(r=>r.plannedSec>0);
+  const maxCount = Math.max(...taskRows.map(r=>r.count),1);
+
+  // weekday completion distribution
+  const wdCounts = [0,0,0,0,0,0,0]; // Mon..Sun
+  studiedDates().forEach(ds=>{
+    const day = (new Date(ds+'T00:00:00').getDay()+6)%7;
+    wdCounts[day]++;
+  });
+  const wdLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const maxWd = Math.max(...wdCounts,1);
+
+  let html = '';
+  html += `<div class="stat-grid">
+    <div class="stat"><div class="v mono">${totalDaysStudied}</div><div class="l">days studied</div></div>
+    <div class="stat"><div class="v mono">${s.current} / ${s.best}</div><div class="l">current / best streak</div></div>
+    <div class="stat"><div class="v mono">${Math.round(totalSeconds/3600*10)/10}h</div><div class="l">total time logged</div></div>
+    <div class="stat"><div class="v mono">${avgSessionMin}m</div><div class="l">avg. task session</div></div>
+  </div>`;
+
+  html += `<div class="card"><h3>Time per task (top 8)</h3>`;
+  taskRows.forEach(r=>{
+    const pct = (r.count/maxCount)*100;
+    html += `<div class="bar-row"><div class="lbl">${escapeHtml(r.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><div class="bar-val">${r.count}×</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><h3>Studied by weekday</h3>`;
+  wdLabels.forEach((l,i)=>{
+    const pct = (wdCounts[i]/maxWd)*100;
+    html += `<div class="bar-row"><div class="lbl">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:var(--ember);"></div></div><div class="bar-val">${wdCounts[i]}</div></div>`;
+  });
+  html += `</div>`;
+
+  if(timedTaskRows.length){
+    html += `<div class="card"><h3>Estimate accuracy</h3><div>`;
+    timedTaskRows.slice(0,6).forEach(r=>{
+      const avgActual = r.totalSec/r.count/60;
+      const avgPlanned = r.plannedSec/r.count/60;
+      const diff = avgActual - avgPlanned;
+      const sign = diff>0?'+':'';
+      html += `<div class="list-item"><div class="info"><div class="t">${escapeHtml(r.name)}</div>
+        <div class="s">avg ${Math.round(avgActual)}m actual vs ${Math.round(avgPlanned)}m planned</div></div>
+        <div class="s mono" style="color:${diff>0?'var(--brick)':'var(--teal)'}">${sign}${Math.round(diff)}m</div></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* =========================================================================
+   RENDER: MANAGE
+   ========================================================================= */
+function renderManage(){
+  const el = document.getElementById('manageContent');
+  const routines = Object.values(DB.routines);
+  const tasks = Object.values(DB.tasks);
+
+  let html = `<div class="section-title">Routines</div>`;
+  if(!routines.length){
+    html += emptyState('list','No routines yet','Create a cyclic routine, e.g. a 5-day study cycle.');
+  } else {
+    routines.forEach(r=>{
+      const active = DB.settings.activeRoutineId === r.id;
+      html += `<div class="list-item">
+        <div class="info"><div class="t">${escapeHtml(r.name)} ${active?'<span class="diff-tag diff-easy">active</span>':''}</div>
+        <div class="s">${r.days.length}-day cycle · starts ${r.startDate}</div></div>
+        <div class="ctrl">
+          ${!active?`<button class="btn btn-sm btn-ghost" onclick="setActiveRoutine('${r.id}')">Set active</button>`:''}
+          <button class="icon-btn" onclick="editRoutine('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+        </div></div>`;
+    });
+  }
+  html += `<button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="openRoutineEditor()">+ New routine</button>`;
+
+  html += `<div class="section-title">Task library</div>`;
+  if(!tasks.length){
+    html += emptyState('list','No tasks yet','Tasks are reusable — build a library, then assign them to routine days.');
+  } else {
+    tasks.forEach(t=>{
+      html += `<div class="list-item">
+        <div class="info"><div class="t">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
+          <div class="s">${TASK_TYPES[t.type].label}${t.plannedMinutes?' · '+t.plannedMinutes+'m':''}${t.difficulty?' · '+t.difficulty:''}</div></div>
+        <div class="ctrl">
+          <button class="icon-btn" onclick="editTask('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+        </div></div>`;
+    });
+  }
+  html += `<button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="openTaskEditor()">+ New task</button>`;
+
+  html += `<div class="section-title">Settings</div>
+    <div class="card">
+      <div class="field">
+        <label>Weekly streak threshold (days needed per week)</label>
+        <input type="number" id="threshInput" min="1" max="7" value="${DB.settings.streakThreshold}" onchange="updateThreshold(this.value)">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Theme</label>
+        <div class="chiprow">
+          <button class="chip ${DB.settings.theme!=='dark'?'sel':''}" onclick="setTheme('light')">Light</button>
+          <button class="chip ${DB.settings.theme==='dark'?'sel':''}" onclick="setTheme('dark')">Dark</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Data</div>
+    <div class="card">
+      <div class="row">
+        <button class="btn btn-ghost" onclick="exportData()">Export JSON</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Import JSON</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" class="hidden" onchange="importData(this.files[0])">
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+function updateThreshold(v){ DB.settings.streakThreshold = Math.max(1, Math.min(7, parseInt(v)||3)); saveData(); refreshHeader(); }
+function setTheme(t){ DB.settings.theme = t; saveData(); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); renderManage(); }
+function setActiveRoutine(id){ DB.settings.activeRoutineId = id; saveData(); renderManage(); refreshHeader(); toast('Active routine set'); }
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'study-backup-'+todayISO()+'.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(!parsed.routines || !parsed.tasks || !parsed.logs) throw new Error('bad shape');
+      if(!confirm('Import will replace all current data. Continue?')) return;
+      DB = parsed; DB.version = SCHEMA_VERSION; saveData();
+      toast('Data imported');
+      renderManage(); refreshHeader();
+    }catch(err){ toast('Import failed — invalid file'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ---- Task editor ---- */
+function openTaskEditor(id){
+  const t = id ? DB.tasks[id] : { id:uid(), name:'', icon:'', type:'timed', difficulty:'medium', plannedMinutes:20, archived:false };
+  openModal(`
+    <div class="modal-head"><h3>${id?'Edit task':'New task'}</h3><button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Task name</label><input type="text" id="f_name" value="${escapeAttr(t.name)}" placeholder="e.g. Practice problems"></div>
+    <div class="row">
+      <div class="field"><label>Icon (optional emoji)</label><input type="text" id="f_icon" maxlength="2" value="${escapeAttr(t.icon)}" placeholder="📘"></div>
+      <div class="field"><label>Type</label>
+        <select id="f_type" onchange="document.getElementById('f_planned_field').style.display = this.value==='timed' ? '' : 'none'">
+          <option value="timed" ${t.type==='timed'?'selected':''}>Timed (with timer)</option>
+          <option value="checklist" ${t.type==='checklist'?'selected':''}>Simple check-off</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" id="f_planned_field" style="${t.type==='timed'?'':'display:none;'}"><label>Planned minutes</label><input type="number" id="f_planned" min="0" value="${t.plannedMinutes||0}"></div>
+      <div class="field"><label>Difficulty</label>
+        <select id="f_diff">
+          <option value="easy" ${t.difficulty==='easy'?'selected':''}>Easy</option>
+          <option value="medium" ${t.difficulty==='medium'?'selected':''}>Medium</option>
+          <option value="hard" ${t.difficulty==='hard'?'selected':''}>Hard</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveTask('${t.id}', ${id?'true':'false'})">Save task</button>
+    ${id?`<button class="btn btn-brick btn-block" style="margin-top:8px;" onclick="deleteTask('${t.id}')">Delete task</button>`:''}
+  `);
+}
+function editTask(id){ openTaskEditor(id); }
+function saveTask(id, existing){
+  const name = document.getElementById('f_name').value.trim();
+  if(!name){ toast('Name required'); return; }
+  const type = document.getElementById('f_type').value;
+  const t = {
+    id, name,
+    icon: document.getElementById('f_icon').value.trim(),
+    type,
+    plannedMinutes: type==='timed' ? (parseInt(document.getElementById('f_planned').value)||0) : 0,
+    difficulty: document.getElementById('f_diff').value,
+    archived:false, createdAt: DB.tasks[id]?.createdAt || Date.now()
+  };
+  DB.tasks[id] = t; saveData();
+  closeModal(); renderManage(); renderToday();
+  toast(existing==='true' || existing===true ? 'Task updated' : 'Task created');
+}
+function deleteTask(id){
+  if(!confirm('Delete this task? It will be removed from all routine days.')) return;
+  delete DB.tasks[id];
+  Object.values(DB.routines).forEach(r=>r.days.forEach(d=>{ d.taskIds = d.taskIds.filter(x=>x!==id); }));
+  saveData(); closeModal(); renderManage(); renderToday();
+}
+
+/* ---- Routine editor ---- */
+let routineDraft = null;
+let routineDraftDayIdx = 0;
+
+function openRoutineEditor(id){
+  const src = id ? DB.routines[id] : null;
+  routineDraft = src ? JSON.parse(JSON.stringify(src)) : {
+    id: uid(), name:'', startDate: todayISO(), archived:false, createdAt: Date.now(),
+    days: [{dayIndex:0, name:'Day 1', taskIds:[]}]
+  };
+  routineDraftDayIdx = 0;
+  renderRoutineModal(!!src);
+}
+function editRoutine(id){ openRoutineEditor(id); }
+
+function renderRoutineModal(isEdit){
+  const r = routineDraft;
+  const dayTabs = r.days.map((d,i)=>`<button class="day-tab ${i===routineDraftDayIdx?'sel':''}" onclick="switchDraftDay(${i})">${escapeHtml(d.name||('Day '+(i+1)))}</button>`).join('');
+  const day = r.days[routineDraftDayIdx];
+  const allTasks = Object.values(DB.tasks);
+
+  let taskChips = allTasks.length ? allTasks.map(t=>{
+    const sel = day.taskIds.includes(t.id);
+    return `<button class="chip ${sel?'sel':''}" onclick="toggleDraftTask('${t.id}')">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</button>`;
+  }).join('') : '<p class="sub">No tasks in your library yet — add one from Manage first.</p>';
+
+  openModal(`
+    <div class="modal-head"><h3>${isEdit?'Edit routine':'New routine'}</h3><button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Routine name</label><input type="text" id="r_name" value="${escapeAttr(r.name)}" placeholder="e.g. Exam prep cycle" oninput="routineDraft.name=this.value"></div>
+    <div class="row">
+      <div class="field"><label>Cycle length (days)</label><input type="number" id="r_length" min="1" max="30" value="${r.days.length}" onchange="resizeDraftDays(this.value)"></div>
+      <div class="field"><label>Start date</label><input type="text" id="r_start" value="${r.startDate}" oninput="routineDraft.startDate=this.value"></div>
+    </div>
+    <div class="divider"></div>
+    <label style="font-size:12px;color:var(--ink-soft);font-weight:600;">Configure each day</label>
+    <div class="day-tabs" style="margin-top:8px;">${dayTabs}</div>
+    <div class="field"><label>Day name</label><input type="text" id="d_name" value="${escapeAttr(day.name)}" placeholder="e.g. Push day / Reading day" oninput="day.name=this.value"></div>
+    <div class="field"><label>Tasks for this day</label><div class="chiprow">${taskChips}</div></div>
+    <button class="btn btn-primary btn-block" style="margin-top:6px;" onclick="saveRoutine(${isEdit})">Save routine</button>
+    ${isEdit?`<button class="btn btn-brick btn-block" style="margin-top:8px;" onclick="deleteRoutine('${r.id}')">Delete routine</button>`:''}
+  `);
+}
+function switchDraftDay(i){ routineDraftDayIdx = i; renderRoutineModal(!!DB.routines[routineDraft.id]); }
+function resizeDraftDays(n){
+  n = Math.max(1, Math.min(30, parseInt(n)||1));
+  const days = routineDraft.days;
+  while(days.length < n) days.push({dayIndex:days.length, name:'Day '+(days.length+1), taskIds:[]});
+  while(days.length > n) days.pop();
+  if(routineDraftDayIdx >= n) routineDraftDayIdx = n-1;
+  renderRoutineModal(!!DB.routines[routineDraft.id]);
+}
+function toggleDraftTask(taskId){
+  const day = routineDraft.days[routineDraftDayIdx];
+  const idx = day.taskIds.indexOf(taskId);
+  if(idx>-1) day.taskIds.splice(idx,1); else day.taskIds.push(taskId);
+  renderRoutineModal(!!DB.routines[routineDraft.id]);
+}
+function saveRoutine(isEdit){
+  const name = document.getElementById('r_name').value.trim();
+  if(!name){ toast('Name required'); return; }
+  routineDraft.name = name;
+  routineDraft.startDate = document.getElementById('r_start').value.trim() || todayISO();
+  DB.routines[routineDraft.id] = routineDraft;
+  if(!DB.settings.activeRoutineId) DB.settings.activeRoutineId = routineDraft.id;
+  saveData();
+  closeModal(); renderManage(); renderToday();
+  toast(isEdit?'Routine updated':'Routine created');
+}
+function deleteRoutine(id){
+  if(!confirm('Delete this routine? Historical logs are kept, but the schedule is removed.')) return;
+  delete DB.routines[id];
+  if(DB.settings.activeRoutineId === id) DB.settings.activeRoutineId = Object.keys(DB.routines)[0]||null;
+  saveData(); closeModal(); renderManage(); renderToday();
+}
+
+/* =========================================================================
+   UTIL
+   ========================================================================= */
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+function emptyState(icon, title, sub, extra){
+  return `<div class="empty"><h3 style="font-size:16px;">${title}</h3><p>${sub}</p>${extra||''}</div>`;
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+function init(){
+  switchView('today');
+  refreshHeader();
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+}
+init();
+</script>
+</body>
+</html>
