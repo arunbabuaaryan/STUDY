@@ -333,6 +333,28 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
 .check.pulse{ animation:checkPulse .5s ease-out; }
 @media (prefers-reduced-motion: reduce){ .check.pulse{ animation:none; } }
 
+/* ============ GUIDED SEQUENTIAL MODE ============ */
+.guided-overlay{
+  position:fixed; inset:0; background:var(--paper); z-index:150; display:none;
+  flex-direction:column; padding:0; overflow-y:auto;
+}
+.guided-overlay.active{display:flex; animation:fadein .2s ease;}
+.guided-top{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 0;}
+.guided-progress-dots{display:flex; gap:5px; padding:0 18px; margin-top:14px;}
+.guided-progress-dots .dot{flex:1; height:4px; border-radius:99px; background:var(--line);}
+.guided-progress-dots .dot.done{background:var(--teal);}
+.guided-progress-dots .dot.current{background:var(--ember);}
+.guided-body{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;}
+.guided-taskname{font-family:var(--display); font-size:24px; font-weight:600; text-align:center; margin-bottom:6px;}
+.guided-meta{font-size:13px; color:var(--ink-faint); margin-bottom:28px; font-family:var(--mono);}
+.guided-dial{position:relative; width:220px; height:220px; margin-bottom:24px;}
+.guided-dial .digits{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.guided-dial .digits .t{font-family:var(--mono); font-size:40px; font-weight:700;}
+.guided-timesup{color:var(--ember); font-weight:700; font-size:14px; margin-bottom:10px; text-align:center;}
+.guided-controls{display:flex; flex-direction:column; gap:10px; width:100%; max-width:340px;}
+.guided-controls .row{display:flex; gap:10px;}
+.guided-bottom{padding:18px; max-width:340px; margin:0 auto; width:100%;}
+
 .toast{
   position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(10px); opacity:0;
   background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:99px; font-size:13px;
@@ -449,6 +471,7 @@ nav.tabbar .tab.active svg{filter:drop-shadow(0 0 0 var(--teal));}
 </nav>
 
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal" id="modalBody"></div></div>
+<div class="guided-overlay" id="guidedOverlay"><div id="guidedContent"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -499,8 +522,9 @@ function fmtMin(sec){ return Math.round(sec/60); }
 /* TASK_TYPES registry — plug-in point for new task kinds later (e.g. 'reading', 'flashcards').
    Each type controls whether a timer/estimate is shown and how completion is captured. */
 const TASK_TYPES = {
-  checklist: { label:'Simple check-off', hasTimer:false },
-  timed:     { label:'Timed task', hasTimer:true },
+  checklist: { label:'Simple check-off', hasTimer:false, hasCount:false },
+  timed:     { label:'Timed task', hasTimer:true, hasCount:false },
+  count:     { label:'Count-based (e.g. 20 reps)', hasTimer:false, hasCount:true },
 };
 
 /* =========================================================================
@@ -512,8 +536,11 @@ function dayIndexForDate(routine, dateStr){
   if(!routine || !routine.days.length) return null;
   const start = new Date(routine.startDate+'T00:00:00');
   const d = new Date(dateStr+'T00:00:00');
+  if(d < start) return null;
+  if(routine.scheduleType === 'weekdays'){
+    return (d.getDay()+6)%7; // Monday=0..Sunday=6 — fixed by day of week, not cycle position
+  }
   const diff = Math.floor((d - start) / 86400000);
-  if(diff < 0) return null;
   return diff % routine.days.length;
 }
 function routineDayFor(routine, dateStr){
@@ -541,6 +568,11 @@ function setDayOverride(day, taskId, minutes){
     day.overrides[taskId] = { plannedMinutes: minutes };
   }
 }
+function effectiveTargetCount(task, day){
+  if(!task) return 1;
+  const override = day && day.countOverrides && day.countOverrides[task.id];
+  return (typeof override === 'number') ? override : (task.targetCount||1);
+}
 
 function logsForDate(dateStr){
   return Object.values(DB.logs).filter(l => l.date === dateStr);
@@ -552,16 +584,33 @@ function upsertLog(patch){
   let log = logFor(patch.date, patch.taskId);
   if(!log){
     log = { id: uid(), date: patch.date, routineId: patch.routineId, dayIndex: patch.dayIndex,
-      taskId: patch.taskId, completed:false, actualSeconds:0, plannedSeconds:patch.plannedSeconds||0, note:'', completedAt:null };
+      taskId: patch.taskId, completed:false, actualSeconds:0, plannedSeconds:patch.plannedSeconds||0, count:0, note:'', completedAt:null };
     DB.logs[log.id] = log;
   }
   Object.assign(log, patch);
   saveData();
   return log;
 }
+/* Count-based tasks: +/- steppers instead of a single checkbox. Completion
+   is derived automatically from count vs target, same mental model as the
+   checkbox/timer types so streaks and Trends don't need special cases. */
+function setTaskCount(taskId, dateStr, delta){
+  const r = activeRoutine();
+  const day = routineDayFor(r, dateStr);
+  const t = taskById(taskId);
+  const target = effectiveTargetCount(t, day);
+  const existing = logFor(dateStr, taskId);
+  const newCount = Math.max(0, (existing?.count||0) + delta);
+  const dayIdx = dayIndexForDate(r, dateStr);
+  upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId, count:newCount, completed: newCount >= target });
+  const justCompleted = newCount >= target && (!existing || (existing.count||0) < target);
+  renderToday();
+  if(justCompleted){ pulseCheckSoon(taskId); checkMilestones(); }
+  maybeAutoBackup(dateStr);
+}
 
 /* Any date with logged activity (completed OR time actually logged) counts as "studied". */
-function hasActivity(log){ return !!(log.completed || (log.actualSeconds||0) > 0); }
+function hasActivity(log){ return !!(log.completed || (log.actualSeconds||0) > 0 || (log.count||0) > 0); }
 function studiedDates(){
   const set = new Set();
   Object.values(DB.logs).forEach(l => { if(hasActivity(l)) set.add(l.date); });
@@ -604,6 +653,39 @@ function computeStreaks(){
     current = run;
   }
   return { current, best, curWeekCount, threshold };
+}
+
+/* ---- Habit Strength: a single 0-100 score blending three signals so one
+   bad day doesn't tank it the way a raw streak count does — streak length
+   (capped, so it's not the whole story), overall consistency since you
+   started, and recent 14-day momentum (are you actually still doing this
+   *now*, not just historically). ---- */
+function computeHabitStrength(){
+  const s = computeStreaks();
+  const studied = studiedDates();
+  const totalDays = studied.size;
+  if(totalDays === 0) return { score:0, label:'Just starting', streakPart:0, consistencyPart:0, momentumPart:0 };
+
+  const allDates = Array.from(studied).sort();
+  const daysSinceFirst = Math.max(1, Math.round((new Date(todayISO()+'T00:00:00') - new Date(allDates[0]+'T00:00:00'))/86400000) + 1);
+  const consistencyPct = Math.min(100, Math.round((totalDays/daysSinceFirst)*100));
+
+  let last14 = 0;
+  for(let i=0;i<14;i++){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    if(studied.has(todayISO(d))) last14++;
+  }
+  const momentumPct = Math.round((last14/14)*100);
+  const streakPct = Math.round(Math.min(1, s.current/8)*100);
+
+  const score = Math.round(0.4*streakPct + 0.35*consistencyPct + 0.25*momentumPct);
+  let label;
+  if(score>=90) label = 'Locked in';
+  else if(score>=70) label = 'Strong';
+  else if(score>=40) label = 'Steady';
+  else label = 'Building';
+
+  return { score, label, streakPart:streakPct, consistencyPart:consistencyPct, momentumPart:momentumPct };
 }
 
 /* =========================================================================
@@ -675,6 +757,33 @@ function daysSinceLastBackup(){
   if(!raw) return null;
   return Math.floor((Date.now()-parseInt(raw))/86400000);
 }
+function getGuidedSound(){ return localStorage.getItem('routine_guided_sound') !== '0'; } // default on
+function setGuidedSound(on){ localStorage.setItem('routine_guided_sound', on?'1':'0'); renderSettings(); }
+function getGuidedVoice(){ return localStorage.getItem('routine_guided_voice') === '1'; } // default off
+function setGuidedVoice(on){ localStorage.setItem('routine_guided_voice', on?'1':'0'); renderSettings(); }
+function playChime(freq){
+  if(!getGuidedSound()) return;
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq||880;
+    osc.connect(gain); gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.4);
+    osc.start(); osc.stop(ctx.currentTime+0.4);
+  }catch(e){}
+}
+function speak(text){
+  if(!getGuidedVoice() || !('speechSynthesis' in window)) return;
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1; u.volume = 0.9;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
 
 /* =========================================================================
    TIMER ENGINE
@@ -737,6 +846,224 @@ function finishTimer(mark){
   if(mark){ toast('Task completed'); pulseCheckSoon(taskId); checkMilestones(); }
   renderToday();
   maybeAutoBackup(dateStr);
+}
+
+/* =========================================================================
+   GUIDED SEQUENTIAL MODE — Routinery-style: walks through today's tasks
+   one at a time with an auto-counting-down timer per step. Reuses the
+   normal timer's data shape (actualSeconds/plannedSeconds) so a session
+   logged this way looks identical to one logged the normal way. Never
+   auto-advances or auto-completes on its own — hitting zero just switches
+   to a "time's up" state and waits for the person to decide, so nothing
+   gets silently skipped or marked done without an explicit tap.
+   ========================================================================= */
+let guidedState = null; // { taskIds, index, elapsed, startedAt, running, timesUp, _raf }
+
+function isTaskDoneOn(dateStr, taskId){
+  const log = logFor(dateStr, taskId);
+  return !!(log && log.completed);
+}
+function guidedTask(){ return guidedState ? taskById(guidedState.taskIds[guidedState.index]) : null; }
+
+function startGuidedSession(){
+  if(timerState){ toast('Finish your current timer first'); return; }
+  const r = activeRoutine();
+  const day = r ? routineDayFor(r, todayISO()) : null;
+  if(!day || !day.taskIds.length){ toast('No tasks scheduled today'); return; }
+  guidedState = { taskIds: day.taskIds.slice(), index: 0, elapsed:0, startedAt:null, running:false, timesUp:false, _raf:null };
+  while(guidedState.index < guidedState.taskIds.length && isTaskDoneOn(todayISO(), guidedState.taskIds[guidedState.index])) guidedState.index++;
+  if(guidedState.index >= guidedState.taskIds.length){ toast('All tasks already done today'); guidedState = null; return; }
+  document.getElementById('guidedOverlay').classList.add('active');
+  beginGuidedStep();
+}
+function beginGuidedStep(){
+  const t = guidedTask();
+  guidedState.startedAt = Date.now();
+  guidedState.elapsed = 0;
+  guidedState.running = t.type === 'timed';
+  guidedState.timesUp = false;
+  playChime(660);
+  speak('Starting: '+t.name);
+  renderGuided();
+  if(guidedState.running) guidedTick();
+}
+function guidedTick(){
+  if(!guidedState || !guidedState.running) return;
+  updateGuidedDialDisplay();
+  const t = guidedTask();
+  const day = routineDayFor(activeRoutine(), todayISO());
+  const planned = effectivePlannedMinutes(t, day)*60;
+  const elapsed = guidedState.elapsed + (Date.now()-guidedState.startedAt)/1000;
+  if(planned>0 && elapsed >= planned && !guidedState.timesUp){
+    guidedState.timesUp = true;
+    playChime(440);
+    speak("Time's up for "+t.name);
+    renderGuided();
+  }
+  guidedState._raf = requestAnimationFrame(guidedTick);
+}
+function pauseGuided(){
+  if(!guidedState || !guidedState.running) return;
+  guidedState.elapsed += (Date.now()-guidedState.startedAt)/1000;
+  guidedState.running = false;
+  if(guidedState._raf) cancelAnimationFrame(guidedState._raf);
+  renderGuided();
+}
+function resumeGuided(){
+  if(!guidedState || guidedState.running) return;
+  guidedState.startedAt = Date.now();
+  guidedState.running = true;
+  guidedTick();
+}
+function guidedAdjustCount(delta){
+  const t = guidedTask();
+  setTaskCount(t.id, todayISO(), delta);
+  renderGuided();
+}
+function markGuidedDone(){
+  const t = guidedTask();
+  const day = routineDayFor(activeRoutine(), todayISO());
+  const r = activeRoutine();
+  const dateStr = todayISO();
+  const dayIdx = dayIndexForDate(r, dateStr);
+  if(guidedState._raf) cancelAnimationFrame(guidedState._raf);
+  if(t.type==='timed'){
+    const finalElapsed = guidedState.elapsed + (guidedState.running ? (Date.now()-guidedState.startedAt)/1000 : 0);
+    upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId:t.id,
+      actualSeconds: (logFor(dateStr,t.id)?.actualSeconds||0) + Math.round(finalElapsed),
+      plannedSeconds: effectivePlannedMinutes(t,day)*60, completed:true });
+  } else if(t.type==='count'){
+    upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId:t.id, count: effectiveTargetCount(t,day), completed:true });
+  } else {
+    upsertLog({ date:dateStr, routineId:r.id, dayIndex:dayIdx, taskId:t.id, completed:true });
+  }
+  checkMilestones();
+  advanceGuided();
+}
+function skipGuidedStep(){
+  if(guidedState._raf) cancelAnimationFrame(guidedState._raf);
+  advanceGuided();
+}
+function advanceGuided(){
+  guidedState.index++;
+  while(guidedState.index < guidedState.taskIds.length && isTaskDoneOn(todayISO(), guidedState.taskIds[guidedState.index])) guidedState.index++;
+  if(guidedState.index >= guidedState.taskIds.length){ renderGuidedComplete(); maybeAutoBackup(todayISO()); return; }
+  beginGuidedStep();
+}
+function exitGuidedSession(){
+  const t = guidedTask();
+  const hasProgress = guidedState && t && t.type==='timed' && (guidedState.running || guidedState.elapsed>0);
+  if(hasProgress){
+    showConfirm({
+      title: 'Exit guided session?',
+      message: 'Progress on the current task hasn\'t been saved — exiting now discards it unless you mark it done first.',
+      confirmLabel: 'Exit anyway', danger: true,
+      onConfirm: () => closeGuidedSession()
+    });
+    return;
+  }
+  closeGuidedSession();
+}
+function closeGuidedSession(){
+  if(guidedState && guidedState._raf) cancelAnimationFrame(guidedState._raf);
+  guidedState = null;
+  document.getElementById('guidedOverlay').classList.remove('active');
+  renderToday();
+}
+function updateGuidedDialDisplay(){
+  if(!guidedState) return;
+  const t = guidedTask();
+  if(!t || t.type!=='timed') return;
+  const day = routineDayFor(activeRoutine(), todayISO());
+  const planned = effectivePlannedMinutes(t, day)*60;
+  const elapsed = guidedState.elapsed + (guidedState.running ? (Date.now()-guidedState.startedAt)/1000 : 0);
+  const remaining = Math.max(0, planned - elapsed);
+  const timeEl = document.getElementById('guidedTime');
+  const ringEl = document.getElementById('guidedRing');
+  if(timeEl) timeEl.textContent = fmtTime(remaining);
+  if(ringEl && planned>0){
+    const pct = Math.min(1, elapsed/planned);
+    const C = 2*Math.PI*98;
+    ringEl.style.strokeDasharray = C;
+    ringEl.style.strokeDashoffset = C*(1-pct);
+  }
+}
+function renderGuided(){
+  const el = document.getElementById('guidedContent');
+  const t = guidedTask();
+  const day = routineDayFor(activeRoutine(), todayISO());
+  const total = guidedState.taskIds.length;
+  const dots = guidedState.taskIds.map((tid,i)=>{
+    const cls = i<guidedState.index ? 'done' : (i===guidedState.index?'current':'');
+    return `<div class="dot ${cls}"></div>`;
+  }).join('');
+
+  let bodyHtml;
+  if(t.type==='timed'){
+    bodyHtml = `
+      <div class="guided-dial">
+        <svg width="220" height="220" viewBox="0 0 220 220" style="transform:rotate(-90deg);">
+          <circle cx="110" cy="110" r="98" style="stroke:var(--line); stroke-width:9; fill:none;"/>
+          <circle cx="110" cy="110" r="98" id="guidedRing" style="stroke:${guidedState.timesUp?'var(--ember)':'var(--teal)'}; stroke-width:9; fill:none; stroke-linecap:round;"
+            stroke-dasharray="${2*Math.PI*98}" stroke-dashoffset="0"/>
+        </svg>
+        <div class="digits"><div class="t mono" id="guidedTime">--:--</div></div>
+      </div>
+      ${guidedState.timesUp ? `<div class="guided-timesup">⏰ Time's up — keep going or wrap up?</div>` : ''}
+      <div class="guided-controls">
+        <div class="row">
+          ${guidedState.running ? `<button class="btn btn-ghost" style="flex:1;" onclick="pauseGuided()">Pause</button>` : `<button class="btn btn-ghost" style="flex:1;" onclick="resumeGuided()">Resume</button>`}
+          <button class="btn btn-ghost" style="flex:1;" onclick="skipGuidedStep()">Skip</button>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="markGuidedDone()">Mark done &amp; continue</button>
+      </div>`;
+  } else if(t.type==='count'){
+    const target = effectiveTargetCount(t, day);
+    const log = logFor(todayISO(), t.id);
+    const count = log?.count||0;
+    bodyHtml = `
+      <div style="display:flex; align-items:center; gap:18px; margin-bottom:28px;">
+        <button class="icon-btn" style="width:48px;height:48px;" onclick="guidedAdjustCount(-1)">−</button>
+        <div class="mono" style="font-size:36px; font-weight:700;">${count}/${target}</div>
+        <button class="icon-btn" style="width:48px;height:48px;" onclick="guidedAdjustCount(1)">+</button>
+      </div>
+      <div class="guided-controls">
+        <div class="row"><button class="btn btn-ghost btn-block" onclick="skipGuidedStep()">Skip</button></div>
+        <button class="btn btn-primary btn-block" onclick="markGuidedDone()">Mark done &amp; continue</button>
+      </div>`;
+  } else {
+    bodyHtml = `
+      <div class="guided-controls">
+        <div class="row"><button class="btn btn-ghost btn-block" onclick="skipGuidedStep()">Skip</button></div>
+        <button class="btn btn-primary btn-block" onclick="markGuidedDone()">Mark done &amp; continue</button>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="guided-top">
+      <span class="mono" style="font-size:12px; color:var(--ink-faint);">Task ${guidedState.index+1} of ${total}</span>
+      <button class="xbtn" onclick="exitGuidedSession()">✕</button>
+    </div>
+    <div class="guided-progress-dots">${dots}</div>
+    <div class="guided-body">
+      <div class="guided-taskname">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
+      <div class="guided-meta">${t.difficulty?t.difficulty+' · ':''}${t.type==='timed'?'timed':t.type==='count'?'count-based':'checklist'}</div>
+      ${bodyHtml}
+    </div>`;
+  if(t.type==='timed') updateGuidedDialDisplay();
+}
+function renderGuidedComplete(){
+  const el = document.getElementById('guidedContent');
+  el.innerHTML = `
+    <div class="guided-top"><span></span><button class="xbtn" onclick="closeGuidedSession()">✕</button></div>
+    <div class="guided-body">
+      <div style="width:88px;height:88px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="guided-taskname">Session complete</div>
+      <div class="guided-meta">Nice work — everything's logged.</div>
+      <button class="btn btn-primary btn-block" style="max-width:280px; margin-top:20px;" onclick="closeGuidedSession()">Done</button>
+    </div>`;
 }
 
 /* ---- Milestones: celebrate round-number "days studied" totals and new
@@ -870,13 +1197,18 @@ function renderToday(swipeDirection){
   }
 
   if(!tasks.length){
-    main += emptyState('calendar','No tasks for this day','Add tasks to this routine day from Manage.');
+    main += (r.scheduleType==='weekdays')
+      ? emptyState('calendar','Rest day','Nothing scheduled — enjoy the break, or add tasks to this day from Manage.')
+      : emptyState('calendar','No tasks for this day','Add tasks to this routine day from Manage.');
   } else {
     const focusEligible = viewingToday && !isFuture;
     if(focusEligible && tasks.length>0){
-      main += `<button class="focus-toggle" onclick="setFocusMode(${!getFocusMode()})" title="${getFocusMode() ? 'Switch to full list' : 'Switch to guided focus mode'}">
-        ${getFocusMode() ? '🎯 Focus' : '☰ List'}
-      </button>`;
+      main += `<div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+        <button class="focus-toggle" style="margin-bottom:0;" onclick="setFocusMode(${!getFocusMode()})" title="${getFocusMode() ? 'Switch to full list' : 'Switch to guided focus mode'}">
+          ${getFocusMode() ? '🎯 Focus' : '☰ List'}
+        </button>
+        ${!allDone ? `<button class="focus-toggle" style="margin-bottom:0;" onclick="startGuidedSession()">▶ Guided session</button>` : ''}
+      </div>`;
     }
     if(focusEligible && getFocusMode() && !allDone){
       main += renderFocusBody(tasks, viewDate, day);
@@ -899,17 +1231,29 @@ function renderTaskRow(t, dateStr, disabled, highlighted, day){
   const log = logFor(dateStr, t.id);
   const done = !!(log && log.completed);
   const isTimed = t.type === 'timed';
+  const isCount = t.type === 'count';
   const isActiveTimer = timerState && timerState.taskId === t.id && dateStr===todayISO();
   const canTimer = isTimed && !disabled && dateStr===todayISO();
   const mins = effectivePlannedMinutes(t, day);
+  const target = effectiveTargetCount(t, day);
+  const count = log ? (log.count||0) : 0;
   const hasNote = log && log.note;
+
+  const checkOrStepper = isCount
+    ? `<div style="display:flex; align-items:center; gap:5px; flex:none;">
+        <button class="icon-btn" ${disabled?'disabled style="opacity:.35;"':''} onclick="setTaskCount('${t.id}','${dateStr}',-1)">−</button>
+        <span class="mono" style="font-size:12.5px; min-width:34px; text-align:center;">${count}/${target}</span>
+        <button class="icon-btn" ${disabled?'disabled style="opacity:.35;"':''} onclick="setTaskCount('${t.id}','${dateStr}',1)">+</button>
+      </div>`
+    : `<button class="check" ${disabled?'disabled style="opacity:.35; pointer-events:none;"':''} onclick="toggleTask('${t.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>`;
+
   return `<div class="task ${done?'done':''}" id="task-${t.id}" style="${highlighted?'border-color:var(--teal); border-width:2px;':''}">
-    <button class="check" ${disabled?'disabled style="opacity:.35; pointer-events:none;"':''} onclick="toggleTask('${t.id}')">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-    </button>
+    ${checkOrStepper}
     <div class="body">
       <div class="name">${escapeHtml(t.icon?t.icon+' ':'')}${escapeHtml(t.name)}</div>
-      <div class="meta">${t.difficulty?`<span class="diff-tag diff-${t.difficulty}">${t.difficulty}</span> · `:''}${isTimed ? (mins?mins+' min planned':'timed') : 'checklist'}${log && log.actualSeconds ? ' · logged '+fmtMin(log.actualSeconds)+'m' : ''}${hasNote?' · 📝':''}</div>
+      <div class="meta">${t.difficulty?`<span class="diff-tag diff-${t.difficulty}">${t.difficulty}</span> · `:''}${isTimed ? (mins?mins+' min planned':'timed') : (isCount ? 'target '+target : 'checklist')}${log && log.actualSeconds ? ' · logged '+fmtMin(log.actualSeconds)+'m' : ''}${hasNote?' · 📝':''}</div>
     </div>
     <div class="actions">
       <button class="icon-btn ${hasNote?'on':''}" onclick="openNoteEditor('${t.id}','${dateStr}')" title="Note">
@@ -1336,6 +1680,33 @@ function renderDonut(segments){
   </div>`;
 }
 
+function renderHabitStrengthCard(){
+  const h = computeHabitStrength();
+  const C = 2*Math.PI*44;
+  const color = h.score>=70 ? 'var(--teal)' : h.score>=40 ? 'var(--ember)' : 'var(--brick)';
+  return `<div class="card">
+    <h3 style="margin-bottom:12px;">Habit strength</h3>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <div style="position:relative; width:104px; height:104px; flex:none;">
+        <svg width="104" height="104" viewBox="0 0 104 104" style="transform:rotate(-90deg);">
+          <circle cx="52" cy="52" r="44" stroke="var(--line)" stroke-width="9" fill="none"/>
+          <circle cx="52" cy="52" r="44" stroke="${color}" stroke-width="9" fill="none" stroke-linecap="round"
+            stroke-dasharray="${C}" stroke-dashoffset="${C*(1-h.score/100)}"/>
+        </svg>
+        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+          <div class="mono" style="font-weight:700; font-size:20px;">${h.score}</div>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:600; font-size:14.5px; margin-bottom:6px;">${h.label}</div>
+        <div class="bar-row" style="margin-bottom:5px;"><div class="lbl" style="width:64px;">Streak</div><div class="bar-track"><div class="bar-fill" style="width:${h.streakPart}%"></div></div></div>
+        <div class="bar-row" style="margin-bottom:5px;"><div class="lbl" style="width:64px;">Consistency</div><div class="bar-track"><div class="bar-fill" style="width:${h.consistencyPart}%; background:var(--ember);"></div></div></div>
+        <div class="bar-row" style="margin-bottom:0;"><div class="lbl" style="width:64px;">Momentum</div><div class="bar-track"><div class="bar-fill" style="width:${h.momentumPart}%; background:#6B8FB8;"></div></div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderMilestonesCard(totalDaysStudied, bestStreak){
   const achieved = DAYS_MILESTONES.filter(m=>totalDaysStudied>=m);
   const next = DAYS_MILESTONES.find(m=>m>totalDaysStudied);
@@ -1482,6 +1853,7 @@ function renderTrends(){
 
   let html = '';
   html += `<button class="btn btn-ghost btn-block" style="margin-bottom:12px;" onclick="openWeeklySummary()">📋 Weekly summary (copy/share as text)</button>`;
+  html += renderHabitStrengthCard();
   html += `<div class="stat-grid">
     <div class="stat"><div class="v mono">${totalDaysStudied}</div><div class="l">days studied</div></div>
     <div class="stat"><div class="v mono">${s.current} / ${s.best}</div><div class="l">current / best streak</div></div>
@@ -1588,12 +1960,13 @@ function renderManage(){
   const tasks = allTasks.filter(t=>!t.archived);
   const archivedTasks = allTasks.filter(t=>t.archived);
   const overviewStreak = computeStreaks();
+  const overviewStrength = computeHabitStrength();
 
   let html = `<div class="stat-grid">
     <div class="stat"><div class="v mono">${routines.length}</div><div class="l">active routine${routines.length===1?'':'s'}</div></div>
     <div class="stat"><div class="v mono">${tasks.length}</div><div class="l">tasks in library</div></div>
-    <div class="stat"><div class="v mono">${studiedDates().size}</div><div class="l">total days studied</div></div>
     <div class="stat"><div class="v mono">${overviewStreak.best}</div><div class="l">best streak (weeks)</div></div>
+    <div class="stat"><div class="v mono">${overviewStrength.score}</div><div class="l">habit strength</div></div>
   </div>`;
 
   html += `<div class="section-title">Routines</div>`;
@@ -1604,7 +1977,7 @@ function renderManage(){
       const active = DB.settings.activeRoutineId === r.id;
       html += `<div class="list-item">
         <div class="info"><div class="t">${escapeHtml(r.name)} ${active?'<span class="diff-tag diff-easy">active</span>':''}</div>
-        <div class="s">${r.days.length}-day cycle · starts ${r.startDate}</div></div>
+        <div class="s">${r.scheduleType==='weekdays'?'Fixed weekly schedule':r.days.length+'-day cycle'} · starts ${r.startDate}</div></div>
         <div class="ctrl">
           ${!active?`<button class="btn btn-sm btn-ghost" onclick="setActiveRoutine('${r.id}')">Set active</button>`:''}
           <button class="icon-btn" onclick="duplicateRoutine('${r.id}')" title="Duplicate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg></button>
@@ -1626,7 +1999,7 @@ function renderManage(){
       archivedRoutines.forEach(r=>{
         html += `<div class="list-item">
           <div class="info"><div class="t">${escapeHtml(r.name)}</div>
-          <div class="s">${r.days.length}-day cycle · started ${r.startDate}</div></div>
+          <div class="s">${r.scheduleType==='weekdays'?'Fixed weekly schedule':r.days.length+'-day cycle'} · started ${r.startDate}</div></div>
           <div class="ctrl"><button class="btn btn-sm btn-ghost" onclick="restoreRoutine('${r.id}')">Restore</button></div></div>`;
       });
       html += `</div>`;
@@ -1723,6 +2096,24 @@ function renderSettings(){
           <button class="chip ${DB.settings.textSize==='md'||!DB.settings.textSize?'sel':''}" onclick="setTextSize('md')">Medium</button>
           <button class="chip ${DB.settings.textSize==='lg'?'sel':''}" onclick="setTextSize('lg')">Large</button>
         </div>
+      </div>
+    </div>
+
+    <div class="section-title">Guided session</div>
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <div>
+          <div style="font-size:13.5px; font-weight:600;">Sound cues</div>
+          <div class="sub" style="margin:2px 0 0;">A short chime when a step starts and when time's up.</div>
+        </div>
+        <button class="chip ${getGuidedSound()?'sel':''}" style="flex:none;" onclick="setGuidedSound(${!getGuidedSound()})">${getGuidedSound()?'On':'Off'}</button>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:13.5px; font-weight:600;">Voice announcements</div>
+          <div class="sub" style="margin:2px 0 0;">Says the task name out loud at each step.</div>
+        </div>
+        <button class="chip ${getGuidedVoice()?'sel':''}" style="flex:none;" onclick="setGuidedVoice(${!getGuidedVoice()})">${getGuidedVoice()?'On':'Off'}</button>
       </div>
     </div>
 
@@ -1882,21 +2273,23 @@ function confirmResetAll(){
 
 /* ---- Task editor ---- */
 function openTaskEditor(id){
-  const t = id ? DB.tasks[id] : { id:uid(), name:'', icon:'', type:'timed', difficulty:'medium', plannedMinutes:20, category:'', archived:false };
+  const t = id ? DB.tasks[id] : { id:uid(), name:'', icon:'', type:'timed', difficulty:'medium', plannedMinutes:20, targetCount:20, category:'', archived:false };
   openModal(`
     <div class="modal-head"><h3>${id?'Edit task':'New task'}</h3><button class="xbtn" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Task name</label><input type="text" id="f_name" value="${escapeAttr(t.name)}" placeholder="e.g. Practice problems"></div>
     <div class="row">
       <div class="field"><label>Icon (optional emoji)</label><input type="text" id="f_icon" maxlength="2" value="${escapeAttr(t.icon)}" placeholder="📘"></div>
       <div class="field"><label>Type</label>
-        <select id="f_type" onchange="document.getElementById('f_planned_field').style.display = this.value==='timed' ? '' : 'none'">
+        <select id="f_type" onchange="onTaskTypeChange(this.value)">
           <option value="timed" ${t.type==='timed'?'selected':''}>Timed (with timer)</option>
           <option value="checklist" ${t.type==='checklist'?'selected':''}>Simple check-off</option>
+          <option value="count" ${t.type==='count'?'selected':''}>Count-based (e.g. 20 reps)</option>
         </select>
       </div>
     </div>
     <div class="row">
       <div class="field" id="f_planned_field" style="${t.type==='timed'?'':'display:none;'}"><label>Planned minutes</label><input type="number" id="f_planned" min="0" value="${t.plannedMinutes||0}"></div>
+      <div class="field" id="f_target_field" style="${t.type==='count'?'':'display:none;'}"><label>Target count</label><input type="number" id="f_target" min="1" value="${t.targetCount||20}"></div>
       <div class="field"><label>Difficulty</label>
         <select id="f_diff">
           <option value="easy" ${t.difficulty==='easy'?'selected':''}>Easy</option>
@@ -1910,6 +2303,10 @@ function openTaskEditor(id){
     ${id?`<button class="btn btn-brick btn-block" style="margin-top:8px;" onclick="archiveTaskFlow('${t.id}')">Archive task</button>`:''}
   `);
 }
+function onTaskTypeChange(type){
+  document.getElementById('f_planned_field').style.display = type==='timed' ? '' : 'none';
+  document.getElementById('f_target_field').style.display = type==='count' ? '' : 'none';
+}
 function editTask(id){ openTaskEditor(id); }
 function saveTask(id, existing){
   const name = document.getElementById('f_name').value.trim();
@@ -1920,6 +2317,7 @@ function saveTask(id, existing){
     icon: document.getElementById('f_icon').value.trim(),
     type,
     plannedMinutes: type==='timed' ? (parseInt(document.getElementById('f_planned').value)||0) : 0,
+    targetCount: type==='count' ? Math.max(1, parseInt(document.getElementById('f_target').value)||1) : 0,
     difficulty: document.getElementById('f_diff').value,
     category: document.getElementById('f_category').value.trim(),
     archived: DB.tasks[id]?.archived || false,
@@ -2089,43 +2487,74 @@ let dayDraftIsNew = false;
 function openRoutineEditor(id, prefillStart){
   const src = id ? DB.routines[id] : null;
   routineDraft = src ? JSON.parse(JSON.stringify(src)) : {
-    id: uid(), name:'', startDate: prefillStart || todayISO(), archived:false, createdAt: Date.now(),
+    id: uid(), name:'', scheduleType:'cycle', startDate: prefillStart || todayISO(), archived:false, createdAt: Date.now(),
     days: []
   };
   renderRoutineModal(!!src);
 }
 function editRoutine(id){ openRoutineEditor(id); }
 
+const WEEKDAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+function switchScheduleType(type){
+  if((routineDraft.scheduleType||'cycle') === type) return;
+  const isEdit = !!DB.routines[routineDraft.id];
+  const hasData = routineDraft.days.some(d=>d.taskIds && d.taskIds.length>0);
+  const doSwitch = () => {
+    routineDraft.scheduleType = type;
+    routineDraft.days = type==='weekdays' ? WEEKDAY_NAMES.map(n=>({name:n, taskIds:[]})) : [{name:'Day 1', taskIds:[]}];
+    renderRoutineModal(isEdit);
+  };
+  if(hasData){
+    showConfirm({
+      title: 'Switch schedule type?',
+      message: 'Changing between a repeating cycle and a fixed weekly schedule resets the day list — task assignments on the current days will be lost.',
+      confirmLabel: 'Switch anyway', danger: true,
+      onCancel: () => renderRoutineModal(isEdit),
+      onConfirm: doSwitch
+    });
+  } else {
+    doSwitch();
+  }
+}
+
 function renderRoutineModal(isEdit){
   const r = routineDraft;
+  const isWeekdays = r.scheduleType === 'weekdays';
   const dayRows = r.days.length ? r.days.map((d,i)=>`
     <div class="list-item">
       <div class="info"><div class="t">${escapeHtml(d.name||('Day '+(i+1)))}</div>
-        <div class="s">${d.taskIds.length} task${d.taskIds.length===1?'':'s'}</div></div>
+        <div class="s">${d.taskIds.length ? d.taskIds.length+' task'+(d.taskIds.length===1?'':'s') : (isWeekdays?'Rest day':'0 tasks')}</div></div>
       <div class="ctrl">
-        <button class="icon-btn" onclick="moveDraftDay(${i},-1)" ${i===0?'disabled':''} title="Move up">
+        ${!isWeekdays ? `<button class="icon-btn" onclick="moveDraftDay(${i},-1)" ${i===0?'disabled':''} title="Move up">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>
         <button class="icon-btn" onclick="moveDraftDay(${i},1)" ${i===r.days.length-1?'disabled':''} title="Move down">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-        </button>
+        </button>` : ''}
         <button class="icon-btn" onclick="openDayEditor(${i})" title="Edit day">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
         </button>
-        <button class="icon-btn" onclick="deleteDraftDay(${i})" title="Delete day">
+        ${!isWeekdays ? `<button class="icon-btn" onclick="deleteDraftDay(${i})" title="Delete day">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-        </button>
+        </button>` : ''}
       </div>
     </div>`).join('') : '<p class="sub">No days yet. Add your first day below — this becomes day 1 of the cycle.</p>';
 
   openModal(`
     <div class="modal-head"><h3>${isEdit?'Edit routine':'New routine'}</h3><button class="xbtn" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Routine name</label><input type="text" id="r_name" value="${escapeAttr(r.name)}" placeholder="e.g. Exam prep cycle" oninput="routineDraft.name=this.value"></div>
+    <div class="field"><label>Schedule type</label>
+      <div class="chiprow">
+        <button class="chip ${!isWeekdays?'sel':''}" onclick="switchScheduleType('cycle')">Repeating cycle</button>
+        <button class="chip ${isWeekdays?'sel':''}" onclick="switchScheduleType('weekdays')">Fixed weekly</button>
+      </div>
+      <p class="sub" style="margin:6px 0 0;">${isWeekdays ? 'Same days every week — e.g. study Mon/Wed/Fri, rest the rest.' : 'A cycle of N days that repeats regardless of the calendar, e.g. a 5-day rotation.'}</p>
+    </div>
     <div class="field"><label>Start date</label><input type="text" id="r_start" value="${r.startDate}" oninput="routineDraft.startDate=this.value"></div>
     <div class="divider"></div>
-    <label style="font-size:12px;color:var(--ink-soft);font-weight:600;">Days in cycle (${r.days.length})</label>
+    <label style="font-size:12px;color:var(--ink-soft);font-weight:600;">${isWeekdays?'Weekly schedule':'Days in cycle ('+r.days.length+')'}</label>
     <div style="margin-top:8px;">${dayRows}</div>
-    <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="openDayEditor(null)">+ Add day</button>
+    ${!isWeekdays ? `<button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="openDayEditor(null)">+ Add day</button>` : ''}
     <div class="divider"></div>
     <button class="btn btn-primary btn-block" onclick="saveRoutine(${isEdit})">Save routine</button>
     ${isEdit?`<button class="btn btn-brick btn-block" style="margin-top:8px;" onclick="deleteRoutine('${r.id}')">Delete routine</button>`:''}

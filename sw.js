@@ -1,4 +1,4 @@
-const CACHE_NAME = 'routine-v4';
+const CACHE_NAME = 'routine-v5';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png',
